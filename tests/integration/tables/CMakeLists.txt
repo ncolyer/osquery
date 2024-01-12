@@ -49,7 +49,6 @@ function(generateTestsIntegrationTablesTestsTest)
     interface_details.cpp
     listening_ports.cpp
     logged_in_users.cpp
-    memory_devices.cpp
     npm_packages.cpp
     os_version.cpp
     osquery_events.cpp
@@ -76,7 +75,15 @@ function(generateTestsIntegrationTablesTestsTest)
     device_hash.cpp
     device_partitions.cpp
     ycloud_instance_metadata.cpp
+    vscode_extensions.cpp
   )
+
+  if(NOT PLATFORM_LINUX OR OSQUERY_BUILD_ROOT_TESTS)
+    list(APPEND source_files
+      cpu_info.cpp
+      memory_devices.cpp
+    )
+  endif()
 
   if(TARGET_PROCESSOR STREQUAL "x86_64")
     list(APPEND source_files cpuid.cpp)
@@ -151,11 +158,11 @@ function(generateTestsIntegrationTablesTestsTest)
     set(platform_source_files
       apt_sources.cpp
       arp_cache.cpp
-      atom_packages.cpp
       intel_me_info.cpp
       iptables.cpp
       kernel_info.cpp
       kernel_modules.cpp
+      kernel_keys.cpp
       md_devices.cpp
       md_drives.cpp
       md_personalities.cpp
@@ -171,7 +178,6 @@ function(generateTestsIntegrationTablesTestsTest)
       rpm_package_files.cpp
       rpm_packages.cpp
       selinux_events.cpp
-      secureboot.cpp
       shadow.cpp
       shared_memory.cpp
       socket_events.cpp
@@ -182,6 +188,12 @@ function(generateTestsIntegrationTablesTestsTest)
       yara.cpp
       yum_sources.cpp
     )
+
+    if(OSQUERY_BUILD_ROOT_TESTS)
+      list(APPEND platform_source_files
+        secureboot.cpp
+      )
+    endif()
 
     if(OSQUERY_BUILD_DPKG)
       list(APPEND platform_source_files
@@ -202,11 +214,11 @@ function(generateTestsIntegrationTablesTestsTest)
       apps.cpp
       arp_cache.cpp
       asl.cpp
-      atom_packages.cpp
       authorization_mechanisms.cpp
       authorizations.cpp
       battery.cpp
       browser_plugins.cpp
+      connected_displays.cpp
       crashes.cpp
       cups_destinations.cpp
       cups_jobs.cpp
@@ -243,6 +255,7 @@ function(generateTestsIntegrationTablesTestsTest)
       running_apps.cpp
       safari_extensions.cpp
       sandboxes.cpp
+      secureboot.cpp
       shared_folders.cpp
       sharing_preferences.cpp
       signature.cpp
@@ -280,7 +293,6 @@ function(generateTestsIntegrationTablesTestsTest)
       windows_firewall_rules.cpp
       chassis_info.cpp
       chocolatey_packages.cpp
-      cpu_info.cpp
       default_environment.cpp
       disk_info.cpp
       drivers.cpp
@@ -313,6 +325,7 @@ function(generateTestsIntegrationTablesTestsTest)
       windows_crashes.cpp
       windows_events.cpp
       windows_eventlog.cpp
+      windows_search.cpp
       windows_security_products.cpp
       windows_update_history.cpp
       wmi_bios_info.cpp
@@ -323,7 +336,14 @@ function(generateTestsIntegrationTablesTestsTest)
       hvci_status.cpp
       yara.cpp
       tpm_info.cpp
+      security_profile_info.cpp
     )
+
+    if(OSQUERY_BUILD_ETW)
+      list(APPEND platform_source_files
+        etw_process_events.cpp
+      )
+    endif()
 
     list(APPEND source_files ${platform_source_files})
   elseif(DEFINED PLATFORM_FREEBSD)
@@ -356,9 +376,11 @@ function(generateTestsIntegrationTablesTestsTest)
     set(root_test_name_list
       "memoryDevices.test_sanity"
       "Secureboot.test_sanity"
+      "cpuInfo.test_sanity"
     )
 
     set(gtest_filter "")
+
     foreach(root_test_name ${root_test_name_list})
       if(NOT gtest_filter STREQUAL "")
         set(gtest_filter "${gtest_filter}:")
@@ -386,20 +408,20 @@ function(generateTestsIntegrationTablesTestsTest)
       )
 
       set_tests_properties(
-          tests_integration_tables_root-test
-          PROPERTIES ENVIRONMENT "TEST_CONF_FILES_DIR=${TEST_CONFIGS_DIR}"
+        tests_integration_tables_root-test
+        PROPERTIES ENVIRONMENT "TEST_CONF_FILES_DIR=${TEST_CONFIGS_DIR}"
       )
     endif()
 
   else()
-      add_test(NAME tests_integration_tables-test
-        COMMAND tests_integration_tables-test
-      )
+    add_test(NAME tests_integration_tables-test
+      COMMAND tests_integration_tables-test
+    )
 
-      set_tests_properties(
-        tests_integration_tables-test
-        PROPERTIES ENVIRONMENT "TEST_CONF_FILES_DIR=${TEST_CONFIGS_DIR}"
-      )
+    set_tests_properties(
+      tests_integration_tables-test
+      PROPERTIES ENVIRONMENT "TEST_CONF_FILES_DIR=${TEST_CONFIGS_DIR}"
+    )
   endif()
 endfunction()
 

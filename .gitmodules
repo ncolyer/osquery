@@ -18,7 +18,7 @@
 	url = https://github.com/arangodb/linenoise-ng
 [submodule "libraries/cmake/source/lzma/src"]
 	path = libraries/cmake/source/lzma/src
-	url = https://github.com/xz-mirror/xz
+	url = https://github.com/tukaani-project/xz.git
 [submodule "libraries/cmake/source/rapidjson/src"]
 	path = libraries/cmake/source/rapidjson/src
 	url = https://github.com/Tencent/rapidjson
@@ -54,7 +54,7 @@
 	url = https://github.com/rpm-software-management/rpm
 [submodule "libraries/cmake/source/popt/src"]
 	path = libraries/cmake/source/popt/src
-	url = https://github.com/osquery/third-party-popt
+	url = https://github.com/rpm-software-management/popt.git
 [submodule "libraries/cmake/source/libdpkg/src"]
 	path = libraries/cmake/source/libdpkg/src
 	url = https://github.com/osquery/third-party-libdpkg
@@ -148,3 +148,12 @@
 [submodule "libraries/cmake/source/aws-sdk-cpp/src/aws-sdk-cpp"]
 	path = libraries/cmake/source/aws-sdk-cpp/src/aws-sdk-cpp
 	url = https://github.com/aws/aws-sdk-cpp
+[submodule "libraries/cmake/source/krabsetw/src"]
+	path = libraries/cmake/source/krabsetw/src
+	url = https://github.com/microsoft/krabsetw.git
+[submodule "osquery/experimental/experiments/linuxevents/libraries/linuxevents/src"]
+	path = osquery/experimental/experiments/linuxevents/libraries/linuxevents/src
+	url = https://github.com/trailofbits/linuxevents
+[submodule "libraries/cmake/source/lz4/src"]
+	path = libraries/cmake/source/lz4/src
+	url = https://github.com/lz4/lz4.git

@@ -4,7 +4,7 @@ osquery supports many flavors of Linux, macOS, and Windows.
 
 While osquery runs on a large number of operating systems, we only provide build instructions for a select few.
 
-The supported compilers are: the osquery toolchain (LLVM/Clang 9.0.1) on Linux, MSVC v142 on Windows, and AppleClang from Xcode Command Line Tools 11.7.
+The supported compilers are: the osquery toolchain (LLVM/Clang 9.0.1) on Linux, MSVC v142 on Windows, and AppleClang from Xcode Command Line Tools 14.x.
 
 ## Prerequisites
 
@@ -53,14 +53,14 @@ cmake --build . -j10 # where 10 is the number of parallel build jobs
 
 ## macOS
 
-The current build of osquery supports deployment to the same set of macOS versions (macOS 10.14 and newer).  _Building_
-osquery from source on macOS now requires 10.15 Catalina or newer.
+The current build of osquery supports deployment to the same set of macOS versions (macOS 10.15 and newer).  _Building_
+osquery from source on macOS now requires macOS 12 Monterey alongwith Xcode 14 or newer.
 
 The initial directory is assumed to be `/Users/<user>`
 
 ### Step 1: Install macOS prerequisites
 
-Please ensure [Homebrew](https://brew.sh/) has been installed, and install a _full copy_ of Xcode 12 or newer (not just the Xcode command-line tools, although you need to install those too — launch Xcode after installing or upgrading, and complete its installation of the "additional components" when prompted).
+Please ensure [Homebrew](https://brew.sh/) has been installed, and install a _full copy_ of Xcode 14 or newer (not just the Xcode command-line tools, although you need to install those too — launch Xcode after installing or upgrading, and complete its installation of the "additional components" when prompted).
 
 Then do the following.
 
@@ -75,7 +75,7 @@ pip3 install --user setuptools pexpect==3.3 psutil timeout_decorator six thrift=
 
 ### Step 2: Download and build source on macOS
 
-In the following example, the use of the additional CMake argument `-DCMAKE_OSX_DEPLOYMENT_TARGET=10.14` specifies macOS 10.14 as the minimum compatible macOS version to which you can deploy osquery (this affects the version of the macOS SDK used at build time).
+In the following example, the use of the additional CMake argument `-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15` specifies macOS 10.15 as the minimum compatible macOS version to which you can deploy osquery (this affects the version of the macOS SDK used at build time).
 
 ```bash
 # Download source
@@ -84,7 +84,7 @@ cd osquery
 
 # Configure
 mkdir build; cd build
-cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
 
 # Build
 cmake --build . -j $(sysctl -n hw.ncpu)
@@ -94,9 +94,9 @@ cmake --build . -j $(sysctl -n hw.ncpu)
 
 Certain functionality on macOS requires an entitled and code-signed executable. By default, macOS builds from source will be _unsigned_ and these particular features will be disabled at runtime.
 
-Specifically, the `es_process_events` table makes use of the EndpointSecurity APIs, which require osquery to be code-signed with a certificate possessing the EndpointSecurity Client entitlement. If unsigned, osquery will still run as normal, but `es_process_events` will be disabled.
+Specifically, the `es_process_events` and `es_process_file_events` tables makes use of the EndpointSecurity APIs, which require osquery to be code-signed with a certificate possessing the EndpointSecurity Client entitlement. If unsigned, osquery will still run as normal, but `es_process_events`  and `es_process_file_events` will be disabled.
 
-Organizations wishing to code-sign osquery themselves will need their Apple Developer team _account owner_ to manually request and obtain the EndpointSecurity Client entitlement from Apple, for their organization's code-signing certificate. Developers can also disable SIP in a development VM (disabling SIP decreases your system's security and is _not_ recommended except on a VM dedicated to building osquery) and use ad-hoc code-signing, if they want to work on `es_process_events` without pursuing the entitlement.
+Organizations wishing to code-sign osquery themselves will need their Apple Developer team _account owner_ to manually request and obtain the EndpointSecurity Client entitlement from Apple, for their organization's code-signing certificate. Developers can also disable SIP in a development VM (disabling SIP decreases your system's security and is _not_ recommended except on a VM dedicated to building osquery) and use ad-hoc code-signing, if they want to work on `es_process_events` and `es_process_file_events` without pursuing the entitlement.
 
 If using VMware Fusion 12, for example, you can reach Recovery Mode by going to Virtual Machine, Settings, Startup Disk. There, hold the Option key, and click `Restart to Firmware...`. Restarting the VM will now enter the VMware virtual EFI shell. From here, select `Enter Setup`, `Boot from a File`, and then arrow down to the Recovery partition. Hit return to find and select the `boot.efi`, and hit return again to enter Recovery Mode. From a Terminal in Recovery Mode, you can [disable SIP](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html) and then reboot to macOS.
 
@@ -116,7 +116,7 @@ Note: It may be easier to install these prerequisites using [Chocolatey](https:/
 
 - [CMake](https://cmake.org/) (>= 3.21.4): the MSI installer is recommended. During installation, select the option to add it to the system `PATH` for all users. If there is any older version of CMake installed (e.g., using Chocolatey), uninstall that version first!  Do not install CMake using the Visual Studio Installer, because it contains an older version than required.
 - Visual Studio 2019 (2 options)
-  1. [Visual Studio 2019 Build Tools Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16) (without Visual Studio): In the installer choose the "C++ build tools" workload, then on the right, under "Optional", select "MSVC v142 - VS 2019 C++", "Windows 10 SDK", and "C++ Clang tools for Windows".
+  1. [Visual Studio 2019 Build Tools Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16) (without Visual Studio): In the installer choose the "C++ build tools" workload, then on the right, under "Optional", select "MSVC v142 - VS 2019 C++", "Windows 10 SDK", "C++ ATL tools", and "C++ Clang tools for Windows".
   2. [Visual Studio 2019 Community Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16): In the installer choose the "Desktop development with C++" workload, then on the right, under "Optional", select "MSVC v142 - VS 2019 C++", "Windows 10 SDK", and "C++ Clang tools for Windows".
 - [Git for Windows](https://github.com/git-for-windows/git/releases/latest): Select "checkout as-is, commit as-is". Later check "Enable symbolic links" support.
 - [Python 3](https://www.python.org/downloads/windows/), specifically the 64-bit version.

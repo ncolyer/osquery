@@ -36,12 +36,17 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
   # Apple Silicon
   set(TARGET_PROCESSOR "aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+  # Windows on Arm
+  set(TARGET_PROCESSOR "aarch64")
 else()
   message(FATAL_ERROR "Unsupported architecture ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
 if("arm64" IN_LIST CMAKE_OSX_ARCHITECTURES)
   set(TARGET_PROCESSOR "aarch64")
+elseif("x86_64" IN_LIST CMAKE_OSX_ARCHITECTURES)
+  set(TARGET_PROCESSOR "x86_64")
 endif()
 
 # TODO(alessandro): Add missing defines: PLATFORM_FREEBSD

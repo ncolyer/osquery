@@ -59,6 +59,10 @@
 #include <osquery/system/usersgroups/windows/users_service.h>
 #endif
 
+#if defined(OSQUERY_BUILD_EXPERIMENTS)
+#include <osquery/experiments/loader.h>
+#endif
+
 #ifdef __linux__
 #include <sys/syscall.h>
 
@@ -117,6 +121,8 @@ DECLARE_bool(disable_database);
 DECLARE_bool(disable_events);
 DECLARE_bool(disable_logging);
 DECLARE_bool(enable_numeric_monitoring);
+DECLARE_bool(ignore_table_exceptions);
+DECLARE_bool(ignore_registry_exceptions);
 
 CLI_FLAG(bool, S, false, "Run as a shell process");
 CLI_FLAG(bool, D, false, "Run as a daemon process");
@@ -353,6 +359,14 @@ Initializer::Initializer(int& argc,
     // These values are force-set and ignore the configuration and CLI.
     FLAGS_disable_logging = true;
     FLAGS_disable_watchdog = true;
+  }
+
+  if (Flag::isDefault("ignore_table_exceptions")) {
+    FLAGS_ignore_table_exceptions = true;
+  }
+
+  if (Flag::isDefault("ignore_registry_exceptions")) {
+    FLAGS_ignore_registry_exceptions = true;
   }
 
   // Initialize registries and plugins
@@ -793,6 +807,11 @@ void Initializer::start() const {
     return;
   }
 
+  // Initialize experiments
+#if defined(OSQUERY_BUILD_EXPERIMENTS)
+  loadExperiments();
+#endif
+
   EventFactory::delay();
 }
 
@@ -822,6 +841,7 @@ class AlarmRunnable : public InterruptibleRunnable {
       std::this_thread::sleep_for(std::chrono::milliseconds(200));
       waited += 200;
       if (waited > FLAGS_alarm_timeout * 1000) {
+        fflush(stdout);
         Initializer::shutdownNow(EXIT_CATASTROPHIC);
       }
     }

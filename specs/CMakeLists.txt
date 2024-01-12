@@ -83,7 +83,8 @@ function(generateNativeTables)
 
   set(platform_dependent_spec_files
     "arp_cache.table:linux,macos,windows"
-    "atom_packages.table:linux,macos,windows"
+    "vscode_extensions.table:linux,macos,windows"
+    "cpu_info.table:linux,macos,windows"
     "darwin/account_policy_data.table:macos"
     "darwin/ad_config.table:macos"
     "darwin/alf.table:macos"
@@ -96,6 +97,7 @@ function(generateNativeTables)
     "darwin/authorizations.table:macos"
     "darwin/battery.table:macos"
     "darwin/browser_plugins.table:macos"
+    "darwin/connected_displays.table:macos"
     "darwin/crashes.table:macos"
     "darwin/cups_destinations.table:macos"
     "darwin/cups_jobs.table:macos"
@@ -157,6 +159,7 @@ function(generateNativeTables)
     "linux/apparmor_profiles.table:linux"
     "linux/apt_sources.table:linux"
     "linux/iptables.table:linux"
+    "linux/kernel_keys.table:linux"
     "linux/kernel_modules.table:linux"
     "linux/lxd_instances.table:linux"
     "linux/lxd_instance_config.table:linux"
@@ -190,8 +193,6 @@ function(generateNativeTables)
     "linux/systemd_units.table:linux"
     "linux/yum_sources.table:linux"
     "linwin/intel_me_info.table:linux,windows"
-    "linwin/secureboot.table:linux,windows"
-    "linwin/cpu_info.table:linux,windows"
     "kernel_info.table:linux,macos,windows"
     "posix/extended_attributes.table:linux,macos"
     "posix/acpi_tables.table:linux,macos"
@@ -248,6 +249,7 @@ function(generateNativeTables)
     "posix/ulimit_info.table:linux,macos"
     "posix/usb_devices.table:linux,macos"
     "posix/user_events.table:linux,macos"
+    "secureboot.table:linux,macos,windows"
     "sleuthkit/device_file.table:linux,macos,windows"
     "sleuthkit/device_hash.table:linux,macos,windows"
     "sleuthkit/device_partitions.table:linux,macos,windows"
@@ -302,14 +304,22 @@ function(generateNativeTables)
     "windows/shellbags.table:windows"
     "windows/prefetch.table:windows"
     "windows/tpm_info.table:windows"
+    "windows/security_profile_info.table:windows"
+    "windows/windows_search.table:windows"
     "yara/yara_events.table:linux,macos"
     "yara/yara.table:linux,macos,windows"
   )
-  
+
   if(OSQUERY_BUILD_BPF)
     list(APPEND platform_dependent_spec_files
       "linux/bpf_process_events.table:linux"
       "linux/bpf_socket_events.table:linux"
+    )
+  endif()
+
+  if(OSQUERY_BUILD_ETW)
+    list(APPEND platform_dependent_spec_files
+      "windows/process_etw_events.table:windows"
     )
   endif()
 

@@ -12,8 +12,6 @@ git reset --hard ; git clean -ffdx
 
 Integrate the osquery-toolchain in the main `CMakeLists.txt` file (see the following file in osquery: `cmake/toolchain.cmake`). Then configure the project.
 
-Force the following `check_include_files()` checks: `stdint.h`, `math.h`, `ctype.h`, `unistd.h`.
-
 ```bash
 cmake \
   -S . \
@@ -23,7 +21,6 @@ cmake \
   -DLIBXML2_WITH_C14N=ON \
   -DLIBXML2_WITH_CATALOG=OFF \
   -DLIBXML2_WITH_DEBUG=OFF \
-  -DLIBXML2_WITH_DOCB=OFF \
   -DLIBXML2_WITH_FTP=OFF \
   -DLIBXML2_WITH_HTML=OFF \
   -DLIBXML2_WITH_HTTP=OFF \
@@ -41,25 +38,22 @@ cmake \
   -DLIBXML2_WITH_PYTHON=OFF \
   -DLIBXML2_WITH_READER=ON \
   -DLIBXML2_WITH_REGEXPS=ON \
-  -DLIBXML2_WITH_RUN_DEBUG=OFF \
   -DLIBXML2_WITH_SAX1=OFF \
   -DLIBXML2_WITH_SCHEMAS=OFF \
   -DLIBXML2_WITH_SCHEMATRON=OFF \
   -DLIBXML2_WITH_TESTS=OFF \
   -DLIBXML2_WITH_THREADS=ON \
   -DLIBXML2_WITH_THREAD_ALLOC=OFF \
+  -DLIBXML2_WITH_TLS=OFF \
   -DLIBXML2_WITH_TREE=ON \
   -DLIBXML2_WITH_VALID=OFF \
   -DLIBXML2_WITH_WRITER=ON \
   -DLIBXML2_WITH_XINCLUDE=OFF \
   -DLIBXML2_WITH_XPATH=ON \
   -DLIBXML2_WITH_XPTR=ON \
+  -DLIBXML2_WITH_XPTR_LOCS=OFF \
   -DLIBXML2_WITH_ZLIB=ON \
-  -DHAVE_STDINT_H:BOOL=true \
-  -DHAVE_MATH_H:BOOL=true \
-  -DHAVE_CTYPE_H:BOOL=true \
-  -DHAVE_UNISTD_H:BOOL=true \
-  -DHAVE_VA_COPY:BOOL=true
+  -DHAVE_VA_COPY:BOOL=ON
 ```
 
 Build the project:
@@ -80,19 +74,18 @@ Make sure you are working in a clean source folder:
 git reset --hard ; git clean -ffdx
 ```
 
-When building for macOS ARM, also pass the following parameter: `-DCMAKE_OSX_ARCHITECTURES=arm64` and change `-DCMAKE_OSX_DEPLOYMENT_TARGET` to `10.15`.
+When building for macOS ARM, also pass the following parameter: `-DCMAKE_OSX_ARCHITECTURES=arm64`, or use `-DCMAKE_OSX_ARCHITECTURES=x86_64` for x86_64.
 
 ```bash
 cmake \
   -S . \
   -B build \
-  -DCMAKE_OSX_SYSROOT=/Applications/Xcode_13.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.3.sdk \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14 \
+  -DCMAKE_OSX_SYSROOT=/Applications/Xcode_15.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
   -DBUILD_SHARED_LIBS=OFF \
   -DLIBXML2_WITH_C14N=ON \
   -DLIBXML2_WITH_CATALOG=OFF \
   -DLIBXML2_WITH_DEBUG=OFF \
-  -DLIBXML2_WITH_DOCB=OFF \
   -DLIBXML2_WITH_FTP=OFF \
   -DLIBXML2_WITH_HTML=OFF \
   -DLIBXML2_WITH_HTTP=OFF \
@@ -110,19 +103,20 @@ cmake \
   -DLIBXML2_WITH_PYTHON=OFF \
   -DLIBXML2_WITH_READER=ON \
   -DLIBXML2_WITH_REGEXPS=ON \
-  -DLIBXML2_WITH_RUN_DEBUG=OFF \
   -DLIBXML2_WITH_SAX1=OFF \
   -DLIBXML2_WITH_SCHEMAS=OFF \
   -DLIBXML2_WITH_SCHEMATRON=OFF \
   -DLIBXML2_WITH_TESTS=OFF \
   -DLIBXML2_WITH_THREADS=ON \
   -DLIBXML2_WITH_THREAD_ALLOC=OFF \
+  -DLIBXML2_WITH_TLS=OFF \
   -DLIBXML2_WITH_TREE=ON \
   -DLIBXML2_WITH_VALID=OFF \
   -DLIBXML2_WITH_WRITER=ON \
   -DLIBXML2_WITH_XINCLUDE=OFF \
   -DLIBXML2_WITH_XPATH=ON \
   -DLIBXML2_WITH_XPTR=ON \
+  -DLIBXML2_WITH_XPTR_LOCS=OFF \
   -DLIBXML2_WITH_ZLIB=ON
 ```
 
@@ -135,6 +129,8 @@ cmake \
 ```
 
 ## Windows
+
+### Windows Common
 
 Make sure you are working in a clean source folder:
 
@@ -151,11 +147,11 @@ Configure the project:
 cmake ^
   -S . ^
   -B build ^
+  -G "Visual Studio 16 2019" ^
   -DBUILD_SHARED_LIBS=OFF ^
   -DLIBXML2_WITH_C14N=ON ^
   -DLIBXML2_WITH_CATALOG=OFF ^
   -DLIBXML2_WITH_DEBUG=OFF ^
-  -DLIBXML2_WITH_DOCB=OFF ^
   -DLIBXML2_WITH_FTP=OFF ^
   -DLIBXML2_WITH_HTML=OFF ^
   -DLIBXML2_WITH_HTTP=OFF ^
@@ -173,20 +169,26 @@ cmake ^
   -DLIBXML2_WITH_PYTHON=OFF ^
   -DLIBXML2_WITH_READER=ON ^
   -DLIBXML2_WITH_REGEXPS=ON ^
-  -DLIBXML2_WITH_RUN_DEBUG=OFF ^
   -DLIBXML2_WITH_SAX1=OFF ^
   -DLIBXML2_WITH_SCHEMAS=OFF ^
   -DLIBXML2_WITH_SCHEMATRON=OFF ^
   -DLIBXML2_WITH_TESTS=OFF ^
   -DLIBXML2_WITH_THREADS=ON ^
   -DLIBXML2_WITH_THREAD_ALLOC=OFF ^
+  -DLIBXML2_WITH_TLS=OFF ^
   -DLIBXML2_WITH_TREE=ON ^
   -DLIBXML2_WITH_VALID=OFF ^
   -DLIBXML2_WITH_WRITER=ON ^
   -DLIBXML2_WITH_XINCLUDE=OFF ^
   -DLIBXML2_WITH_XPATH=ON ^
   -DLIBXML2_WITH_XPTR=ON ^
+  -DLIBXML2_WITH_XPTR_LOCS=OFF ^
   -DLIBXML2_WITH_ZLIB=ON ^
+```
+
+For Windows ARM64, when configuring from Window x86, add
+```
+-A ARM64
 ```
 
 And optionally

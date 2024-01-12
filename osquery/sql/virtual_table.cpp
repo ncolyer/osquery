@@ -11,6 +11,7 @@
 #include <unordered_set>
 
 #include <osquery/core/core.h>
+#include <osquery/core/flagalias.h>
 #include <osquery/core/flags.h>
 #include <osquery/core/system.h>
 #include <osquery/logger/logger.h>
@@ -27,14 +28,21 @@ FLAG(bool, enable_foreign, false, "Enable no-op foreign virtual tables");
 FLAG(uint64,
      table_delay,
      0,
-     "Add an optional microsecond delay between table scans");
+     "Add an optional millisecond delay between table scans");
 
 FLAG(bool,
      extensions_default_index,
      true,
      "Enable INDEX on all extension table columns (default true)");
 
-FLAG(bool, table_exceptions, false, "Allow tables to throw exceptions");
+/* NOTE: the default is false, because it's easier to enable it in one place
+   when starting osquery, instead of having each test enable them,
+   so that they are seen and fixed. */
+FLAG(bool,
+     ignore_table_exceptions,
+     false,
+     "Ignore exceptions thrown by tables. osquery and extensions default to "
+     "true.");
 
 SHELL_FLAG(bool, planner, false, "Enable osquery runtime planner output");
 
@@ -708,6 +716,8 @@ static int xBestIndex(sqlite3_vtab* tab, sqlite3_index_info* pIdxInfo) {
   auto* pVtab = (VirtualTable*)tab;
   const auto& columns = pVtab->content->columns;
 
+  pVtab->instance->addAffectedTable(pVtab->content);
+
   ConstraintSet constraints;
   // Keep track of the index used for each valid constraint.
   // Expect this index to correspond with argv within xFilter.
@@ -893,8 +903,8 @@ static int xFilter(sqlite3_vtab_cursor* pVtabCursor,
     }
   }
 
-// Filtering between cursors happens iteratively, not consecutively.
-// If there are multiple sets of constraints, they apply to each cursor.
+  // Filtering between cursors happens iteratively, not consecutively.
+  // If there are multiple sets of constraints, they apply to each cursor.
   if (FLAGS_planner) {
     plan("xFilter Filtering called for table: " + content->name +
          " [constraint_count=" + std::to_string(content->constraints.size()) +
@@ -1006,7 +1016,7 @@ static int xFilter(sqlite3_vtab_cursor* pVtabCursor,
       LOG(ERROR) << "Exception while executing table " << pVtab->content->name
                  << ": " << e.what();
       setTableErrorMessage(pVtabCursor->pVtab, e.what());
-      if (FLAGS_table_exceptions) {
+      if (!FLAGS_ignore_table_exceptions) {
         throw;
       }
       return SQLITE_ERROR;
@@ -1074,7 +1084,6 @@ struct sqlite3_module* getVirtualTableModule(const std::string& table_name,
 } // namespace tables
 
 Status attachTableInternal(const std::string& name,
-                           const std::string& statement,
                            const SQLiteDBInstanceRef& instance,
                            bool is_extension) {
   if (SQLiteDBManager::isDisabled(name)) {
@@ -1098,12 +1107,14 @@ Status attachTableInternal(const std::string& name,
       instance->db(), name.c_str(), module, (void*)&(*instance));
 
   if (rc == SQLITE_OK || rc == SQLITE_MISUSE) {
-    auto format =
-        "CREATE VIRTUAL TABLE temp." + name + " USING " + name + statement;
+    auto format = "CREATE VIRTUAL TABLE temp." + name + " USING " + name;
 
     rc =
         sqlite3_exec(instance->db(), format.c_str(), nullptr, nullptr, nullptr);
-
+    if (rc != SQLITE_OK) {
+      LOG(ERROR) << "Error creating named virtual table: " << name << " (" << rc
+                 << ")";
+    }
   } else {
     LOG(ERROR) << "Error attaching table: " << name << " (" << rc << ")";
   }
@@ -1155,12 +1166,10 @@ void attachVirtualTables(const SQLiteDBInstanceRef& instance) {
   bool is_extension = false;
 
   for (const auto& name : RegistryFactory::get().names("table")) {
-    // Column information is nice for virtual table create call.
     auto status =
         Registry::call("table", name, {{"action", "columns"}}, response);
     if (status.ok()) {
-      auto statement = columnDefinition(response, true, is_extension);
-      attachTableInternal(name, statement, instance, is_extension);
+      attachTableInternal(name, instance, is_extension);
     }
   }
 }

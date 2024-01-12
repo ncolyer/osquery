@@ -21,16 +21,16 @@ on:
   # Do not run this on pull requests
   push:
     branches:
-      - '*'
+      - '**'
 
     tags:
-      - '*'
+      - '**'
 
 # Please remember to update values for both x86 and aarch64 workflows.
 env:
   PACKAGING_REPO: https://github.com/osquery/osquery-packaging
   PACKAGING_COMMIT: 4caa2c54f0d893c1efa47932571046bbce156c52
-  SUBMODULE_CACHE_VERSION: 1
+  SUBMODULE_CACHE_VERSION: 2
 
 # If the initial code sanity checks are passing, then one job
 # per [`platform` * `build_type`] will start, building osquery
@@ -40,7 +40,7 @@ jobs:
   # This job performs basic source code check, looking for formatting
   # issues and missing copyright headers
   check_code_style:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     container:
       image: osquery/builder18.04:c7a9d706d
@@ -71,8 +71,8 @@ jobs:
         mkdir -p "${rel_build_path}"
         ln -sf "$(pwd)" "${rel_source_path}"
 
-        echo ::set-output name=SOURCE::$(realpath ${rel_source_path})
-        echo ::set-output name=BINARY::$(realpath ${rel_build_path})
+        echo "SOURCE=$(realpath ${rel_source_path})" >> $GITHUB_OUTPUT
+        echo "BINARY=$(realpath ${rel_build_path})" >> $GITHUB_OUTPUT
 
     - name: Configure the project
       working-directory: ${{ steps.build_paths.outputs.BINARY }}
@@ -93,26 +93,43 @@ jobs:
 
 
 
-  # Starts self-hosted runners. TEST TEST TEST
+  # NOTE: Here we manually create two different steps and outputs because there's no easy way
+  # to dynamically access variables per matrix job. Having outputs with different names
+  # lets us easily select the correct one later.
+
+  # Starts self-hosted runner.
   start_ec2_runners:
     needs: check_code_style
     runs-on: ubuntu-latest
 
     outputs:
-      label: ${{ steps.start_ec2_runner.outputs.label }}
-      ec2-instance-id: ${{ steps.start_ec2_runner.outputs.ec2-instance-id }}
+      label-Release: ${{ steps.start_ec2_runner-Release.outputs.label }}
+      ec2-instance-id-Release: ${{ steps.start_ec2_runner-Release.outputs.ec2-instance-id }}
+      label-RelWithDebInfo: ${{ steps.start_ec2_runner-RelWithDebInfo.outputs.label }}
+      ec2-instance-id-RelWithDebInfo: ${{ steps.start_ec2_runner-RelWithDebInfo.outputs.ec2-instance-id }}
 
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.EC2_GITHUB_RUNNER_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.EC2_GITHUB_RUNNER_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.EC2_GITHUB_RUNNER_AWS_REGION }}
 
-      - name: Start aarch64 EC2 runner
-        id: start_ec2_runner
-        uses: theopolis/ec2-github-runner@main
+      - name: Start aarch64 EC2 runner for a Release build
+        id: start_ec2_runner-Release
+        uses: osquery/ec2-github-runner@v2.3.3
+        with:
+          mode: start
+          github-token: ${{ secrets.EC2_GITHUB_RUNNER_GH_PERSONAL_ACCESS_TOKEN }}
+          ec2-image-id: ami-063d99d9ce1bebbe8
+          ec2-instance-type: c6g.4xlarge
+          subnet-id: subnet-06390365e72579736
+          security-group-id: sg-0757a3162c999331b
+
+      - name: Start aarch64 EC2 runner for a RelWithDebInfo build
+        id: start_ec2_runner-RelWithDebInfo
+        uses: osquery/ec2-github-runner@v2.3.3
         with:
           mode: start
           github-token: ${{ secrets.EC2_GITHUB_RUNNER_GH_PERSONAL_ACCESS_TOKEN }}
@@ -136,19 +153,27 @@ jobs:
 
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.EC2_GITHUB_RUNNER_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.EC2_GITHUB_RUNNER_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.EC2_GITHUB_RUNNER_AWS_REGION }}
 
-      - name: Stop aarch64 EC2 runner
-        uses: theopolis/ec2-github-runner@main
+      - name: Stop aarch64 EC2 runner for Release mode build
+        uses: osquery/ec2-github-runner@v2.3.3
         with:
           mode: stop
           github-token: ${{ secrets.EC2_GITHUB_RUNNER_GH_PERSONAL_ACCESS_TOKEN }}
-          label: ${{ needs.start_ec2_runners.outputs.label }}
-          ec2-instance-id: ${{ needs.start_ec2_runners.outputs.ec2-instance-id }}
+          label: ${{ needs.start_ec2_runners.outputs.label-Release }}
+          ec2-instance-id: ${{ needs.start_ec2_runners.outputs.ec2-instance-id-Release }}
+
+      - name: Stop aarch64 EC2 runner for RelWithDebInfo mode build
+        uses: osquery/ec2-github-runner@v2.3.3
+        with:
+          mode: stop
+          github-token: ${{ secrets.EC2_GITHUB_RUNNER_GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start_ec2_runners.outputs.label-RelWithDebInfo }}
+          ec2-instance-id: ${{ needs.start_ec2_runners.outputs.ec2-instance-id-RelWithDebInfo }}
 
 
 
@@ -167,7 +192,11 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ${{ needs.start_ec2_runners.outputs.label }}
+        - os: ${{ needs.start_ec2_runners.outputs.label-Release }}
+          build_type: Release
+          cache_key: ubuntu-20.04_aarch64
+
+        - os: ${{ needs.start_ec2_runners.outputs.label-RelWithDebInfo }}
           build_type: RelWithDebInfo
           cache_key: ubuntu-20.04_aarch64
 
@@ -179,7 +208,24 @@ jobs:
       shell: bash
       id: build_job_count
       run: |
-        echo ::set-output name=VALUE::$(($(nproc) + 1))
+        echo "VALUE=$(($(nproc) + 1))" >> $GITHUB_OUTPUT
+
+    - name: Select the build options for the tests
+      shell: bash
+      id: tests_build_settings
+      run: |
+        if [[ "${{ matrix.build_type }}" == "RelWithDebInfo" ]] ; then
+          echo "VALUE=OFF" >> $GITHUB_OUTPUT
+        else
+          echo "VALUE=ON" >> $GITHUB_OUTPUT
+        fi
+
+    # try to gather some info about build space
+    - name: Disk Space Information
+      shell: bash
+      id: disk_space_info
+      run: |
+        df -h
 
     # We don't have enough space on the worker to actually generate all
     # the debug symbols (osquery + dependencies), so we have a flag to
@@ -189,9 +235,9 @@ jobs:
       id: debug_symbols_settings
       run: |
         if [[ "${{ matrix.build_type }}" == "Debug" ]] ; then
-          echo ::set-output name=VALUE::ON
+          echo "VALUE=ON" >> $GITHUB_OUTPUT
         else
-          echo ::set-output name=VALUE::OFF
+          echo "VALUE=OFF" >> $GITHUB_OUTPUT
         fi
 
     # When we spawn in the container, we are root; create an unprivileged
@@ -200,7 +246,7 @@ jobs:
       id: unprivileged_user
       run: |
         useradd -m -s /bin/bash unprivileged_user
-        echo ::set-output name=NAME::unprivileged_user
+        echo "NAME=unprivileged_user" >> $GITHUB_OUTPUT
 
     # Due to how the RPM packaging tools work, we have to adhere to some
     # character count requirements in the build path vs source path.
@@ -228,13 +274,13 @@ jobs:
         mv .git "${rel_src_path}"
         ( cd "${rel_src_path}" && git reset --hard )
 
-        echo ::set-output name=SOURCE::$(realpath ${rel_src_path})
-        echo ::set-output name=BINARY::$(realpath ${rel_build_path})
-        echo ::set-output name=CCACHE::$(realpath ${rel_ccache_path})
-        echo ::set-output name=PACKAGING::$(realpath ${rel_packaging_path})
-        echo ::set-output name=PACKAGE_DATA::$(realpath ${rel_package_data_path})
-        echo ::set-output name=REL_PACKAGE_BUILD::${rel_package_build_path}
-        echo ::set-output name=PACKAGE_BUILD::$(realpath ${rel_package_build_path})
+        echo "SOURCE=$(realpath ${rel_src_path})" >> $GITHUB_OUTPUT
+        echo "BINARY=$(realpath ${rel_build_path})" >> $GITHUB_OUTPUT
+        echo "CCACHE=$(realpath ${rel_ccache_path})" >> $GITHUB_OUTPUT
+        echo "PACKAGING=$(realpath ${rel_packaging_path})" >> $GITHUB_OUTPUT
+        echo "PACKAGE_DATA=$(realpath ${rel_package_data_path})" >> $GITHUB_OUTPUT
+        echo "REL_PACKAGE_BUILD=${rel_package_build_path}" >> $GITHUB_OUTPUT
+        echo "PACKAGE_BUILD=$(realpath ${rel_package_build_path})" >> $GITHUB_OUTPUT
 
     - name: Clone the osquery-packaging repository
       run: |
@@ -251,7 +297,7 @@ jobs:
         chmod 666 /var/run/docker.sock
 
     - name: Update the cache (ccache)
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ${{ steps.build_paths.outputs.CCACHE }}
 
@@ -262,7 +308,7 @@ jobs:
           ccache_${{ matrix.cache_key }}_${{ matrix.build_type }}
 
     - name: Update the cache (git submodules)
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ${{ steps.build_paths.outputs.SOURCE }}/.git/modules
 
@@ -288,8 +334,8 @@ jobs:
           -DOSQUERY_NO_DEBUG_SYMBOLS=${{ steps.debug_symbols_settings.outputs.VALUE }} \
           -DOSQUERY_TOOLCHAIN_SYSROOT:PATH="/usr/local/osquery-toolchain" \
           -DCMAKE_BUILD_TYPE:STRING="${{ matrix.build_type }}" \
-          -DOSQUERY_BUILD_TESTS=ON \
-          -DOSQUERY_BUILD_ROOT_TESTS=ON \
+          -DOSQUERY_BUILD_TESTS=${{ steps.tests_build_settings.outputs.VALUE }} \
+          -DOSQUERY_BUILD_ROOT_TESTS=${{ steps.tests_build_settings.outputs.VALUE }} \
           "${{ steps.build_paths.outputs.SOURCE }}"
 
     - name: Build the project
@@ -300,6 +346,13 @@ jobs:
 
       run: |
         cmake --build . -j ${{ steps.build_job_count.outputs.VALUE }}
+
+    - name: Disk Space Information
+      shell: bash
+      id: disk_space_info_post_build
+      run: |
+        df -h
+        du -sh ${{ steps.build_paths.outputs.BINARY }}
 
     - name: Run the tests as normal user
       working-directory: ${{ steps.build_paths.outputs.BINARY }}
@@ -324,6 +377,11 @@ jobs:
           --build . \
           --target install \
           -j ${{ steps.build_job_count.outputs.VALUE }}
+
+        # Do some targeted cleanups to get additional free space before installing dependencies,
+        # we are unfortunately out of space otherwise.
+        find . -name "*.a" -exec rm {} \;
+        find . -name "*.o" -exec rm {} \;
 
     # Since we need to run CMake to create the packages with osquery-packaging, the
     # configuration will fail unless the C and C++ compilers are found
@@ -364,12 +422,12 @@ jobs:
       id: packages
       shell: bash
       run: |
-        echo ::set-output name=REL_UNSIGNED_RELEASE_PACKAGE_DATA_PATH::${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/package_data.tar.gz
-        echo ::set-output name=REL_UNSIGNED_RELEASE_DEB_PATH::$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*.deb)
-        echo ::set-output name=REL_UNSIGNED_DEBUG_DEB_PATH::$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*.ddeb)
-        echo ::set-output name=REL_UNSIGNED_RELEASE_RPM_PATH::$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/osquery-?.*.rpm)
-        echo ::set-output name=REL_UNSIGNED_DEBUG_RPM_PATH::$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/osquery-debuginfo-*.rpm)
-        echo ::set-output name=REL_UNSIGNED_RELEASE_TGZ_PATH::$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*linux_aarch64.tar.gz)
+        echo "REL_UNSIGNED_RELEASE_PACKAGE_DATA_PATH=${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/package_data.tar.gz" >> $GITHUB_OUTPUT
+        echo "REL_UNSIGNED_RELEASE_DEB_PATH=$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*.deb)" >> $GITHUB_OUTPUT
+        echo "REL_UNSIGNED_DEBUG_DEB_PATH=$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*.ddeb)" >> $GITHUB_OUTPUT
+        echo "REL_UNSIGNED_RELEASE_RPM_PATH=$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/osquery-?.*.rpm)" >> $GITHUB_OUTPUT
+        echo "REL_UNSIGNED_DEBUG_RPM_PATH=$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/osquery-debuginfo-*.rpm)" >> $GITHUB_OUTPUT
+        echo "REL_UNSIGNED_RELEASE_TGZ_PATH=$(ls ${{ steps.build_paths.outputs.REL_PACKAGE_BUILD }}/*linux_aarch64.tar.gz)" >> $GITHUB_OUTPUT
 
     - name: Store the unsigned release package data artifact
       if: matrix.build_type == 'RelWithDebInfo'

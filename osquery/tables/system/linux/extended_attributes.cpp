@@ -75,26 +75,30 @@ Status getCapabilities(std::string& capabilities, const std::string& path) {
 } // namespace
 
 Status generateXattrRowsForPath(QueryData& output, const std::string& path) {
-  ExtendedAttributeMap xattr_map;
-  auto status = getExtendedAttributes(xattr_map, path);
-  if (!status.ok()) {
-    return status;
+  XAttrGetResult xattr_result = getExtendedAttributes(path);
+  if (xattr_result.isError()) {
+    if (xattr_result.getErrorCode() == XAttrGetError::NoFile) {
+      // Just ignore non-existing files
+      return Status::success();
+    }
+
+    return Status::failure(xattr_result.getError().getMessage());
   }
 
   Row row = {};
-  row["path"] = TEXT(path);
+  row["path"] = SQL_TEXT(path);
 
   auto path_obj = boost::filesystem::path(path);
-  row["directory"] = TEXT(path_obj.parent_path().string());
+  row["directory"] = SQL_TEXT(path_obj.parent_path().string());
 
-  std::string capabilities = {};
+  std::string capabilities;
   bool capabilities_found{false};
 
-  status = getCapabilities(capabilities, path);
+  auto status = getCapabilities(capabilities, path);
   if (status.ok()) {
     if (!capabilities.empty()) {
-      row["key"] = TEXT(kSecurityCapabilityXattrName);
-      row["value"] = TEXT(capabilities);
+      row["key"] = SQL_TEXT(kSecurityCapabilityXattrName);
+      row["value"] = SQL_TEXT(capabilities);
       row["base64"] = INTEGER(0);
 
       output.push_back(row);
@@ -103,7 +107,7 @@ Status generateXattrRowsForPath(QueryData& output, const std::string& path) {
     capabilities_found = true;
   }
 
-  for (const auto& p : xattr_map) {
+  for (const auto& p : xattr_result.get()) {
     const auto& key_name = p.first;
     const auto& key_value = p.second;
 
@@ -115,8 +119,8 @@ Status generateXattrRowsForPath(QueryData& output, const std::string& path) {
 
     // Add empty values as base64
     if (key_value.empty()) {
-      row["key"] = TEXT(key_name);
-      row["value"] = TEXT("");
+      row["key"] = SQL_TEXT(key_name);
+      row["value"] = SQL_TEXT("");
       row["base64"] = INTEGER("1");
 
       output.push_back(row);
@@ -127,34 +131,24 @@ Status generateXattrRowsForPath(QueryData& output, const std::string& path) {
     // 1. A null terminator must be present
     // 2. All characters up to the null terminator must be printable
     // 3. The null terminator must be located at the end of the value buffer
-    auto char_it = std::find_if(key_value.begin(),
-                                key_value.end(),
+    auto value = std::string_view(
+        reinterpret_cast<const char*>(key_value.data()), key_value.size());
 
-                                [](std::uint8_t byte) -> bool {
-                                  auto as_integer = static_cast<int>(byte);
-                                  return !std::isprint(as_integer);
-                                });
+    bool printable = true;
+    if (value[key_value.size() - 1] != '\0') {
+      printable = false;
+    } else {
+      // Drop the null-terminator
+      value.remove_suffix(1);
 
-    bool printable = false;
-    if (char_it != key_value.end() &&
-        std::next(char_it, 1) == key_value.end() && *char_it == 0) {
-      printable = true;
+      printable = std::all_of(value.begin(), value.end(), [](char c) -> bool {
+        return std::isprint(c);
+      });
     }
 
-    auto value_size = key_value.size();
-    if (printable) {
-      --value_size;
-    }
-
-    auto value = std::string(value_size, 0);
-    std::memcpy(&value[0], key_value.data(), value_size);
-
-    if (!printable) {
-      value = base64::encode(value);
-    }
-
-    row["key"] = TEXT(key_name);
-    row["value"] = TEXT(value);
+    row["key"] = SQL_TEXT(key_name);
+    row["value"] =
+        printable ? SQL_TEXT(std::string(value)) : base64::encode(value);
     row["base64"] = printable ? INTEGER(0) : INTEGER(1);
 
     output.push_back(row);

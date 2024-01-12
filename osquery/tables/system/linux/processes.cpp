@@ -28,9 +28,8 @@
 #include <osquery/logger/logger.h>
 #include <osquery/sql/dynamic_table_row.h>
 #include <osquery/tables/system/linux/processes.h>
-
 #include <osquery/utils/conversions/split.h>
-#include <osquery/utils/system/uptime.h>
+#include <osquery/utils/system/boottime.h>
 
 #include <ctime>
 
@@ -50,10 +49,11 @@ inline std::string readProcCMDLine(const std::string& pid) {
   std::string content;
   readFile(attr, content);
   // Remove \0 delimiters.
-  std::replace_if(content.begin(),
-                  content.end(),
-                  [](const char& c) { return c == 0; },
-                  ' ');
+  std::replace_if(
+      content.begin(),
+      content.end(),
+      [](const char& c) { return c == 0; },
+      ' ');
   // Remove trailing delimiter.
   boost::algorithm::trim(content);
   return content;
@@ -308,12 +308,32 @@ SimpleProcStat::SimpleProcStat(const std::string& pid) {
       this->name = detail.at(1);
     } else if (detail.at(0) == "VmRSS") {
       detail[1].erase(detail.at(1).end() - 3, detail.at(1).end());
-      // Memory is reported in kB.
-      this->resident_size = detail.at(1) + "000";
+      // Memory is reported in kB (1024 bytes).
+      auto resident_size_result = osquery::tryTo<std::uint64_t>(detail.at(1));
+
+      if (resident_size_result.isError()) {
+        status =
+            Status::failure("Failed to convert VmRSS string value to integer");
+        return;
+      }
+
+      const auto resident_size = resident_size_result.get() * 1024;
+
+      this->resident_size = std::to_string(resident_size);
     } else if (detail.at(0) == "VmSize") {
       detail[1].erase(detail.at(1).end() - 3, detail.at(1).end());
-      // Memory is reported in kB.
-      this->total_size = detail.at(1) + "000";
+      // Memory is reported in kB (1024 bytes).
+      auto virtual_size_result = osquery::tryTo<std::uint64_t>(detail.at(1));
+
+      if (virtual_size_result.isError()) {
+        status =
+            Status::failure("Failed to convert VmSize string value to integer");
+        return;
+      }
+
+      const auto virtual_size = virtual_size_result.get() * 1024;
+
+      this->total_size = std::to_string(virtual_size);
     } else if (detail.at(0) == "Gid") {
       // Format is: R E - -
       auto gid_detail = osquery::split(detail.at(1), "\t");
@@ -427,7 +447,7 @@ int getOnDisk(const std::string& pid, std::string& path) {
 }
 
 void genProcess(const std::string& pid,
-                long system_boot_time,
+                std::uint64_t system_boot_time,
                 QueryContext& context,
                 TableRows& results) {
   // Parse the process stat and status.
@@ -478,8 +498,9 @@ void genProcess(const std::string& pid,
 
   auto proc_start_time_exp = tryTo<long>(proc_stat.start_time);
   if (proc_start_time_exp.isValue() && system_boot_time > 0) {
-    r["start_time"] = INTEGER(system_boot_time + proc_start_time_exp.take() /
-                                                     sysconf(_SC_CLK_TCK));
+    auto proc_start_time = proc_start_time_exp.take() / sysconf(_SC_CLK_TCK);
+
+    r["start_time"] = BIGINT(system_boot_time + proc_start_time);
   } else {
     r["start_time"] = "-1";
   }
@@ -520,10 +541,7 @@ void genNamespaces(const std::string& pid, QueryData& results) {
 
 TableRows genProcesses(QueryContext& context) {
   TableRows results;
-  auto system_boot_time = getUptime();
-  if (system_boot_time > 0) {
-    system_boot_time = std::time(nullptr) - system_boot_time;
-  }
+  static const std::uint64_t system_boot_time = getBootTime();
 
   auto pidlist = getProcList(context);
   for (const auto& pid : pidlist) {
@@ -565,5 +583,5 @@ QueryData genProcessNamespaces(QueryContext& context) {
 
   return results;
 }
-}
-}
+} // namespace tables
+} // namespace osquery

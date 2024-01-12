@@ -80,6 +80,11 @@ def queries_from_config(config_path):
         print("Cannot open/parse config: %s" % str(e))
         exit(1)
     queries = {}
+
+    if "schedule" not in config and "packs" not in config:
+        print("%s parsed as JSON, but does not contain a 'schedule' or 'packs' stanza. Is it really an osquery configuration file?" % config_path)
+        exit(1)
+
     if "schedule" in config:
         for name, details in config["schedule"].items():
             queries[name] = details["query"]
@@ -97,6 +102,28 @@ def queries_from_config(config_path):
                     for queryname, query in packqueries["queries"].items():
                         queries["pack_" + queryname] = query["query"]
 
+    return queries
+
+
+def queries_from_pack(pack_path):
+    pack = {}
+    rmcomment = re.compile('\/\*[\*A-Za-z0-9\n\s\.\{\}\'\/\\\:]+\*\/|\s+\/\/.*|^\/\/.*|\x5c\x5c\x0a')
+    try:
+        with open(pack_path, "r") as fh:
+            content = fh.read()
+            content = rmcomment.sub('',content)
+            pack = json.loads(content)
+    except Exception as e:
+        print("Cannot open/parse pack: %s" % str(e))
+        exit(1)
+
+    if "queries" not in pack:
+        print("%s parsed as JSON, but does not contain a 'queries' stanza. Is it really an osquery pack?" % config_path)
+        exit(1)
+
+    queries = {}
+    for k, v in pack["queries"].items():
+        queries[k] = v["query"]
     return queries
 
 

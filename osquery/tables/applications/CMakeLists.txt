@@ -20,7 +20,7 @@ function(generateOsqueryTablesApplications)
     chrome/chrome_extension_content_scripts.cpp
     chrome/utils.cpp
     browser_firefox.cpp
-    atom_packages.cpp
+    vscode_extensions.cpp
   )
 
   if(DEFINED PLATFORM_POSIX)
@@ -63,6 +63,12 @@ function(generateOsqueryTablesApplications)
     plugins_config_parsers
     thirdparty_boost
   )
+
+  if(DEFINED PLATFORM_MACOS)
+    target_link_libraries(osquery_tables_applications PRIVATE
+      osquery_utils_plist
+    )
+  endif()
 
   set(public_header_files
     chrome/utils.h

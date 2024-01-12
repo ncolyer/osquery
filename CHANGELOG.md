@@ -1,5 +1,358 @@
 # osquery Changelog
 
+<a name="5.10.2"></a>
+## [5.10.2](https://github.com/osquery/osquery/releases/tag/5.10.2)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.9.1...5.10.2)
+
+This release has several updates and bugfixes. Several improvements to various tables, and their handling.
+
+One potential breaking change, is in how [the watchdog calculates CPU utilization](https://github.com/osquery/osquery/pull/8104).
+Previously, this calculation was based on physical CPUs, now it is based on virtual cores. We believe this makes more sense with modern CPUs.
+
+A second potential breaking change, is in PR [#8102](https://github.com/osquery/osquery/pull/8102). In addition to allowing decorations to the top level of the status logs, this PR normalizes the decorations format to the results log. In practice, this means that the `unixTime`, `severity` and `line` JSON fields are now numbers instead of strings.
+
+Representing commits from 18 contributors! Thank you all.
+
+### New Features
+
+- Add `--enable_watchdog_debug` flag and improve watchdog error messages ([#8070](https://github.com/osquery/osquery/pull/8070))
+- Add `--aws_enforce_fips` to enforce AWS FIPS endpoints ([#8075](https://github.com/osquery/osquery/pull/8075))
+- Add new AWS valid regions ([#8110](https://github.com/osquery/osquery/pull/8110))
+- Implement `decorations_top_level` flag for status logs ([#8102](https://github.com/osquery/osquery/pull/8102))
+
+### Table Changes
+
+- Add new macOS SIP config flags ([#8101](https://github.com/osquery/osquery/pull/8101))
+- Added `cloud`_id to `ycloud_instance_metadata` - the vm metadata table for Yandex Cloud ([#8086](https://github.com/osquery/osquery/pull/8086))
+- Allow querying of kernel and filesystem drivers ([#8119](https://github.com/osquery/osquery/pull/8119))
+- Update `es_process_file_events` adding support for open events, and for only triggering on `file_paths` ([#8114](https://github.com/osquery/osquery/pull/8114))
+- Update `firefox_addons` to use rapidjson to parse and don't block on read ([#8089](https://github.com/osquery/osquery/pull/8089))
+- Update macOS `es_process_events` table: quote spaces in command line and environment variables ([#8054](https://github.com/osquery/osquery/pull/8054))
+- Update linux `disk_encryption` to recursively query parent crypt status ([#8052](https://github.com/osquery/osquery/pull/8052))
+- Add, and revert, indexing on `block_devices` ([#8037](https://github.com/osquery/osquery/pull/8037), [#8151](https://github.com/osquery/osquery/pull/8151))
+
+### Under the Hood improvements
+
+- Add warnings when an enrollment secret cannot be found ([#8082](https://github.com/osquery/osquery/pull/8082))
+- Avoid blocking when reading plist files ([#8099](https://github.com/osquery/osquery/pull/8099))
+- Fix named virtual table create statement ([#8139](https://github.com/osquery/osquery/pull/8139))
+- Remove forensicReadFile ([#8085](https://github.com/osquery/osquery/pull/8085))
+- Substitute the TEXT macro with SQL_TEXT in table code ([#8091](https://github.com/osquery/osquery/pull/8091))
+- Use JSON member iterator instead of rescanning ([#8122](https://github.com/osquery/osquery/pull/8122))
+- core: Avoid checking if a file exists before opening ([#8087](https://github.com/osquery/osquery/pull/8087))
+- improvement: Avoid unnecessary string conversions ([#8093](https://github.com/osquery/osquery/pull/8093))
+- watchdog: Use virtual cores to calculate CPU utilization limit ([#8104](https://github.com/osquery/osquery/pull/8104))
+
+### Bug Fixes
+
+- Always lock event_index_mutex when accessing event_index map ([#8077](https://github.com/osquery/osquery/pull/8077))
+- Check audit return values with <= ([#8125](https://github.com/osquery/osquery/pull/8125))
+- Fix `wifi_survey` table not to crash if the ssid cannot be retrieved ([#8153](https://github.com/osquery/osquery/pull/8153))
+- Fix macOS EndpointSecurity FIM mute inversion for file paths ([#8166](https://github.com/osquery/osquery/pull/8166))
+
+### Documentation
+
+- Add a list of Osquery fleet managers ([#7781](https://github.com/osquery/osquery/pull/7781))
+- Add basic file carving documentation ([#8118](https://github.com/osquery/osquery/pull/8118))
+- Changelog for 5.9.1 ([#8088](https://github.com/osquery/osquery/pull/8088))
+- Changelog 5.10.1 ([#8155](https://github.com/osquery/osquery/pull/8155))
+- Fixed small doc error ([#8147](https://github.com/osquery/osquery/pull/8147))
+- Update Automatic Table Construction example ([#8094](https://github.com/osquery/osquery/pull/8094))
+- Update XCode version mentions to the proper one ([#8128](https://github.com/osquery/osquery/pull/8128))
+- Update the description of `serial_number` in `connected_displays` ([#8113](https://github.com/osquery/osquery/pull/8113))
+
+### Build
+
+- Fix openssl build arch for Windows ARM64 ([#8134](https://github.com/osquery/osquery/pull/8134))
+- Fix python test http server use `SSLContext.wrap_socket()` instead of deprecated `ssl.wrap_socket()` ([#8169](https://github.com/osquery/osquery/pull/8169))
+- GitHub Action to cleanup at stale ec2 runners ([#8156](https://github.com/osquery/osquery/pull/8156))
+- Ignore CVE-2023-30571 ([#8065](https://github.com/osquery/osquery/pull/8065))
+- Missing pragma/header guard for boottime.h ([#8117](https://github.com/osquery/osquery/pull/8117))
+- Permit cross compiling for x86_64 on Apple Silicon ([#8136](https://github.com/osquery/osquery/pull/8136))
+- build: update macos hosted github runner to macos-12 monterey ([#8100](https://github.com/osquery/osquery/pull/8100))
+- ci: Fix DistributedTests.test_run_queries_with_denylisted_query test ([#8154](https://github.com/osquery/osquery/pull/8154))
+- ci: Increase aarch64 available space by splitting the build ([#8131](https://github.com/osquery/osquery/pull/8131))
+- ci: Increase disk space on the Linux x86_64 runner ([#8133](https://github.com/osquery/osquery/pull/8133))
+- ci: Remove flakyness when removing unused packages on Linux ([#8144](https://github.com/osquery/osquery/pull/8144))
+- cve: Fix the expat product name in the libraries manifest ([#8158](https://github.com/osquery/osquery/pull/8158))
+- cve: Ignore dbus CVE-2023-34969 ([#8126](https://github.com/osquery/osquery/pull/8126))
+- cve: Ignore libcap CVE-2023-2603 ([#8127](https://github.com/osquery/osquery/pull/8127))
+- cve: Update expat to version 2.5.0 ([#8159](https://github.com/osquery/osquery/pull/8159))
+- cve: Update libmagic to 5.45 ([#8142](https://github.com/osquery/osquery/pull/8142))
+- cve: Update lzma to 5.4.4 ([#8135](https://github.com/osquery/osquery/pull/8135))
+- cve: Update openssl to 3.1.3 ([#8141](https://github.com/osquery/osquery/pull/8141))
+- libs: Fix openssl build on aarch64 ([#8084](https://github.com/osquery/osquery/pull/8084))
+- libs: Update openssl to 3.1.1 ([#8081](https://github.com/osquery/osquery/pull/8081))
+- libs: Update openssl to 3.1.2 ([#8124](https://github.com/osquery/osquery/pull/8124))
+- test: Fix leaks in inotify and rocksdb tests ([#8080](https://github.com/osquery/osquery/pull/8080))
+
+
+<a name="5.9.1"></a>
+## [5.9.1](https://github.com/osquery/osquery/releases/tag/5.9.1)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.8.2...5.9.1)
+
+Big shoutout for the Windows Arm port!
+
+Representing commits from 14 contributors! Thank you all.
+
+### New Features
+
+- Add support for Windows on Arm ([#7918](https://github.com/osquery/osquery/pull/7918))
+- logger: Add new `string_batch` request type to compliment existing `string` type ([#8027](https://github.com/osquery/osquery/pull/8027))
+
+### Table Changes
+
+- Add `connected_displays` table on macOS ([#7946](https://github.com/osquery/osquery/pull/7946))
+- Add `windows_search` table ([#7990](https://github.com/osquery/osquery/pull/7990))
+- Restore functionality of `crashes` table on macOS 12 and newer ([#7819](https://github.com/osquery/osquery/pull/7819))
+- Update `keychain_items` to include data about key types ([#8002](https://github.com/osquery/osquery/pull/8002))
+- Update `os_version` to include Apple RSR fields using native API ([#8011](https://github.com/osquery/osquery/pull/8011))
+- Update `safari_extensions` to handle the current app extensions pattern ([#7991](https://github.com/osquery/osquery/pull/7991))
+- Update `system_info` to include the nnumber of sockets ([#8038](https://github.com/osquery/osquery/pull/8038))
+- Update `unified_log` table to add `predicate` column and optimize timestamp constraint ([#8019](https://github.com/osquery/osquery/pull/8019))
+
+### Under the Hood improvements
+
+- Improving `listDirectoriesInDirectory` by using `std::fs` ([#7974](https://github.com/osquery/osquery/pull/7974))
+- Do not consider a 404 as an error in ec2-instance-metadata ([#8025](https://github.com/osquery/osquery/pull/8025))
+- Release objects and free memory obtained from COM ([#7999](https://github.com/osquery/osquery/pull/7999))
+- Do not pass wstring::c_str() to wstringToString function ([#8000](https://github.com/osquery/osquery/pull/8000))
+- Do not copy process arguments into vector for CreateProcess call ([#7956](https://github.com/osquery/osquery/pull/7956))
+
+### Bug Fixes
+
+- Fix `version` column in `homebrew_packages` ([#8057](https://github.com/osquery/osquery/pull/8057))
+- Improve extended_attributes implementation for Linux and macOS ([#8046](https://github.com/osquery/osquery/pull/8046))
+- Update event tables to mark time column as "additional" ([#8020](https://github.com/osquery/osquery/pull/8020))
+
+### Documentation
+
+- Update expired Slack invite ([#8051](https://github.com/osquery/osquery/pull/8051))
+- Update `es_process_file_events.table` description ([#7978](https://github.com/osquery/osquery/pull/7978))
+- CHANGELOG 5.8.2 ([#7986](https://github.com/osquery/osquery/pull/7986))
+
+### Build
+
+- cve: Update to openssl 1.1.1u ([#8050](https://github.com/osquery/osquery/pull/8050))
+- cmake: Add an option to disable shallow git clone operations ([#8026](https://github.com/osquery/osquery/pull/8026))
+- Fix the aarch64 workflow ([#8036](https://github.com/osquery/osquery/pull/8036))
+- test: Fix a leak in ExtendedAttributesTableTests SetUp function ([#8045](https://github.com/osquery/osquery/pull/8045))
+- cve: Update libxml2 to v2.11.2 ([#8023](https://github.com/osquery/osquery/pull/8023))
+- libs: Bring out LZ4 from rdkafka and update it to v1.9.4 ([#7996](https://github.com/osquery/osquery/pull/7996))
+- ci: Update python version and docs build tools ([#7969](https://github.com/osquery/osquery/pull/7969))
+- ci: Update aarch64 runner to Ubuntu 20.04 and update badges ([#7984](https://github.com/osquery/osquery/pull/7984))
+- Add few unit tests for the hashing component ([#7993](https://github.com/osquery/osquery/pull/7993))
+
+
+<a name="5.8.2"></a>
+## [5.8.2](https://github.com/osquery/osquery/releases/tag/5.8.2)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.8.1...5.8.2)
+
+Representing commits from 6 contributors! Thank you all.
+
+
+### Bug Fixes
+
+- Fix empty batch result set reporting ([#7958](https://github.com/osquery/osquery/pull/7958))
+- Fix COM security initialization  by setting COM security per interface level ([#7963](https://github.com/osquery/osquery/pull/7963))
+- Fix username field in managed_policy table ([#7944](https://github.com/osquery/osquery/pull/7944))
+
+### Documentation
+
+- CHANGELOG 5.8.1 ([#7957](https://github.com/osquery/osquery/pull/7957))
+
+### Build
+
+- test: Do not always expect a row from the secureboot table ([#7967](https://github.com/osquery/osquery/pull/7967))
+- cmake: Only link against the experiments loader when needed ([#7959](https://github.com/osquery/osquery/pull/7959))
+- tests: Fix some tests becoming osquery shells ([#7964](https://github.com/osquery/osquery/pull/7964))
+- test: Fix SystemdUnitsTest missing the unit_file_state column ([#7965](https://github.com/osquery/osquery/pull/7965))
+- tests: Do not always build root tests on Linux ([#7966](https://github.com/osquery/osquery/pull/7966))
+
+
+<a name="5.8.1"></a>
+## [5.8.1](https://github.com/osquery/osquery/releases/tag/5.8.1)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.7.0...5.8.1)
+
+Representing commits from 22 contributors! Thank you all.
+
+### New Features
+
+- Record and send statistics for distributed queries ([#7870](https://github.com/osquery/osquery/pull/7870))
+
+### Table Changes
+
+- Add ETW-based process events table for Windows ([#7821](https://github.com/osquery/osquery/pull/7821))
+- Add `pid_with_namespace` for `yara` table ([#7920](https://github.com/osquery/osquery/pull/7920))
+- Add a new table `kernel_keys` to the Linux platform ([#7876](https://github.com/osquery/osquery/pull/7876))
+- Leave `min_version` empty in `xprotect_meta` when not specified ([#7926](https://github.com/osquery/osquery/pull/7926))
+- Port the `secureboot` table to macOS ([#7692](https://github.com/osquery/osquery/pull/7692))
+- Update `docker_container_stats` table to include `cached_memory` column ([#7807](https://github.com/osquery/osquery/pull/7807))
+- `cpu_info`: Port the table to macOS x86 and Apple Silicon ([#7757](https://github.com/osquery/osquery/pull/7757))
+- experiments: Implement a new `bpf_process_events_v2` table ([#7773](https://github.com/osquery/osquery/pull/7773))
+- `systemd_units`: Add new `unit_file_state` column ([#7895](https://github.com/osquery/osquery/pull/7895))
+
+### Under the Hood improvements
+
+- Set counter consistently so zero always indicates all records ([#7801](https://github.com/osquery/osquery/pull/7801))
+- Support logging empty result set in batch format for initial runs ([#7803](https://github.com/osquery/osquery/pull/7803))
+- Support rollbacks of osquery when new versions introduce new column families ([#7712](https://github.com/osquery/osquery/pull/7712))
+- analysis.py: Add --pack flag to load queries from a pack file ([#7935](https://github.com/osquery/osquery/pull/7935))
+- profile.py: Log # of queries loaded and raise an error if 0 are loaded ([#7934](https://github.com/osquery/osquery/pull/7934))
+
+### Bug Fixes
+
+- Clear cached constraints and columns in xBestIndex ([#7435](https://github.com/osquery/osquery/pull/7435))
+- Fix assert fail for unverified WMI request result ([#7921](https://github.com/osquery/osquery/pull/7921))
+- Fix leaks in `scheduled_tasks` (#7903) ([#7904](https://github.com/osquery/osquery/pull/7904))
+- Flush console buffer during ungraceful exit ([#7829](https://github.com/osquery/osquery/pull/7829))
+- Propagate windows errors to the exit code ([#7896](https://github.com/osquery/osquery/pull/7896))
+- Relax osquery safe permissions check ([#7763](https://github.com/osquery/osquery/pull/7763))
+- Silence warnings for more builtin Chrome and Brave extensions ([#7932](https://github.com/osquery/osquery/pull/7932))
+- Workaround for hung `routes` table ([#7916](https://github.com/osquery/osquery/pull/7916))
+- dns_resolvers: fix typo in the name when spawning in namespace ([#7875](https://github.com/osquery/osquery/pull/7875))
+- test: Fix flaky test_daemon_sigint ([#7888](https://github.com/osquery/osquery/pull/7888))
+
+### Documentation
+
+- Add note about `windows_security_products` compatibility ([#7880](https://github.com/osquery/osquery/pull/7880))
+- CHANGELOG 5.7.0 ([#7894](https://github.com/osquery/osquery/pull/7894))
+- Docs: mention the recent adoption of automatic CVE scanning ([#7878](https://github.com/osquery/osquery/pull/7878))
+- Fix broken link in CODE_OF_CONDUCT.md ([#7922](https://github.com/osquery/osquery/pull/7922))
+- docs: Update the list of pages ([#7866](https://github.com/osquery/osquery/pull/7866))
+- docs: clarify that logger_plugin is set from CLI ([#7917](https://github.com/osquery/osquery/pull/7917))
+
+### Build
+
+- Do not catch table or registry exceptions when running tests ([#7621](https://github.com/osquery/osquery/pull/7621))
+- Fix and document discovery queries behavior on distributed queries and add tests ([#7655](https://github.com/osquery/osquery/pull/7655))
+- Try to free some disk space on the arm64 runners ([#7950](https://github.com/osquery/osquery/pull/7950))
+- ci: Automatically cancel old PR jobs ([#7887](https://github.com/osquery/osquery/pull/7887))
+- ci: Improve error message when a library is missing from the manifest ([#7899](https://github.com/osquery/osquery/pull/7899))
+- ci: Remove Windows 32bit build ([#7939](https://github.com/osquery/osquery/pull/7939))
+- ci: Update some actions to remove deprecation warnings ([#7864](https://github.com/osquery/osquery/pull/7864))
+- ci: Workaround in the aarch64 runner to avoid out of space ([#7941](https://github.com/osquery/osquery/pull/7941))
+- cmake: Remove forced static libraries search for osquery-toolchain ([#7881](https://github.com/osquery/osquery/pull/7881))
+- cve: Ignore libcryptsetup cves ([#7871](https://github.com/osquery/osquery/pull/7871))
+- cve: Ignore libdpkg CVE-2022-1664 ([#7872](https://github.com/osquery/osquery/pull/7872))
+- cve: Ignore libgcrypt cves ([#7873](https://github.com/osquery/osquery/pull/7873))
+- cve: Ignore sqlite CVE-2022-46908 ([#7911](https://github.com/osquery/osquery/pull/7911))
+- cve: Ignore util-linux cves ([#7929](https://github.com/osquery/osquery/pull/7929))
+- cve: Update librpm to 4.18.0 ([#7910](https://github.com/osquery/osquery/pull/7910))
+- cve: Update openssl to 1.1.1t ([#7937](https://github.com/osquery/osquery/pull/7937))
+- cve: Update yara to 4.2.3 ([#7912](https://github.com/osquery/osquery/pull/7912))
+- git: Ignore compile_commands.json and pyrightconfig.json ([#7885](https://github.com/osquery/osquery/pull/7885))
+- libs: Fix libmagic build on macOS ([#7915](https://github.com/osquery/osquery/pull/7915))
+- libs: Fix system paths used by dbus ([#7919](https://github.com/osquery/osquery/pull/7919))
+- libs: Update dbus to 1.12.24 ([#7905](https://github.com/osquery/osquery/pull/7905))
+- libs: Update libarchive to 3.6.2 ([#7877](https://github.com/osquery/osquery/pull/7877))
+- libs: Update libxml2 to 2.10.3 ([#7882](https://github.com/osquery/osquery/pull/7882))
+- libs: Update popt to 1.19 ([#7909](https://github.com/osquery/osquery/pull/7909))
+- libs: Update util-linux to 2.35.2 ([#7902](https://github.com/osquery/osquery/pull/7902))
+- libs: Update zlib to 1.2.13 ([#7874](https://github.com/osquery/osquery/pull/7874))
+- libs: update Thrift to 0.17 ([#7868](https://github.com/osquery/osquery/pull/7868))
+- test: Add an option to run only selected python testcases ([#7890](https://github.com/osquery/osquery/pull/7890))
+- test: Speed up ec2InstanceMetadata.test_sanity ([#7907](https://github.com/osquery/osquery/pull/7907))
+
+
+<a name="5.7.0"></a>
+## [5.7.0](https://github.com/osquery/osquery/releases/tag/5.7.0)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.6.0...5.7.0)
+
+Representing commits from 12 contributors! Thank you all.
+
+### CVEs
+
+Addressed by updating a library:
+
+Ignored due to not affecting osquery:
+  - libzstd CVE-2021-24031 via ([#7865](https://github.com/osquery/osquery/pull/7865))
+
+### New Features
+
+- New table `security_profile_info` to retrieve security profile information on Windows ([#7794](https://github.com/osquery/osquery/pull/7794))
+
+### Table Changes
+
+- Add column to `es_process_events` for process codesigning flags ([#7726](https://github.com/osquery/osquery/pull/7726))
+- `shimcache`: Only check CurrentControlSet to avoid duplicate rows ([#7832](https://github.com/osquery/osquery/pull/7832))
+- `processes`: Fix the procfs memory unit kB, which is 1024 bytes not 1000 ([#7818](https://github.com/osquery/osquery/pull/7818))
+- Fix permissions on opening pipes for reading in `pipes` table ([#7810](https://github.com/osquery/osquery/pull/7810))
+- Fix the empty `host` column from `logged_in_users` table ([#7685](https://github.com/osquery/osquery/pull/7685))
+- `docker_containers`: Don't report `finished_at` for a container which is still running ([#7783](https://github.com/osquery/osquery/pull/7783))
+- `processes`: Stabilize the `start_time` column value on macOS and Linux ([#7788](https://github.com/osquery/osquery/pull/7788))
+
+### Bug Fixes
+
+- Do not access the AWS SDK request content type if missing ([#7834](https://github.com/osquery/osquery/pull/7834))
+- Fix deadlock when logging happens during a database reset ([#7798](https://github.com/osquery/osquery/pull/7798))
+- Fix handling of some errors during an AWS HTTP request ([#7811](https://github.com/osquery/osquery/pull/7811))
+
+### Documentation
+
+- CHANGELOG 5.6.0 ([#7804](https://github.com/osquery/osquery/pull/7804))
+- Add link to official YARA docs ([#7792](https://github.com/osquery/osquery/pull/7792))
+- Fix typo in `keychain_items` ([#7790](https://github.com/osquery/osquery/pull/7790))
+
+### Packs
+
+- packs/incident_response: `process_memory_map` is also applicable to Darwin ([#7789](https://github.com/osquery/osquery/pull/7789))
+
+### Build
+
+- cve: Ignore zstd CVE-2021-24031 ([#7865](https://github.com/osquery/osquery/pull/7865))
+- ci: Add a job and helper scripts to periodically scan for CVEs ([#7787](https://github.com/osquery/osquery/pull/7787))
+- ci: Update how we set github workflow step outputs ([#7791](https://github.com/osquery/osquery/pull/7791))
+- ci: Fix python version when installing modules and testing on macos ([#7813](https://github.com/osquery/osquery/pull/7813))
+
+<a name="5.6.0"></a>
+## [5.6.0](https://github.com/osquery/osquery/releases/tag/5.6.0)
+
+[Git Commits](https://github.com/osquery/osquery/compare/5.5.1...5.6.0)
+
+Representing commits from 10 contributors! Thank you all.
+
+### Table Changes
+
+- Add `firmware_type` column to `platform_info` on macOS ([#7727](https://github.com/osquery/osquery/pull/7727))
+- Add additional vendor support for the windows `wmi_bios_info` table ([#7631](https://github.com/osquery/osquery/pull/7631))
+- Fix `docker_container_processes` on macOS ([#7746](https://github.com/osquery/osquery/pull/7746))
+- Fix `process_file_events` subscriber being incorrectly initialized ([#7759](https://github.com/osquery/osquery/pull/7759))
+- Fix `secureboot` on windows by acquire the necessary process privileges ([#7743](https://github.com/osquery/osquery/pull/7743))
+- Improve macOS `mdfind` -- Reduce table overhead and support interruption ([#7738](https://github.com/osquery/osquery/pull/7738))
+- Remove `binary` column from `firefox_addons` table ([#7735](https://github.com/osquery/osquery/pull/7735))
+- Remove `is_running` column from macOS `running_apps` table ([#7774](https://github.com/osquery/osquery/pull/7774))
+
+### Under the Hood improvements
+
+- Add `notes` field to the schema and associated json ([#7747](https://github.com/osquery/osquery/pull/7747))
+- Add extended platforms to the schema and associated json ([#7760](https://github.com/osquery/osquery/pull/7760))
+- Fix a leak and improve users and groups APIs on Windows ([#7755](https://github.com/osquery/osquery/pull/7755))
+- Have `--tls_dump` output body to `stderr` ([#7715](https://github.com/osquery/osquery/pull/7715))
+- Improvements to osquery AWS logic ([#7714](https://github.com/osquery/osquery/pull/7714))
+- Remove leftover FreeBSD related code and documentation ([#7739](https://github.com/osquery/osquery/pull/7739))
+
+### Documentation
+
+- CHANGELOG 5.5.1 ([#7737](https://github.com/osquery/osquery/pull/7737))
+- Correct the description on how to configure and use Yara signature urls ([#7769](https://github.com/osquery/osquery/pull/7769))
+- Document difference between `yara` and `yara_events` ([#7744](https://github.com/osquery/osquery/pull/7744))
+- Link to the slack archives ([#7786](https://github.com/osquery/osquery/pull/7786))
+- Update docs: `_changes` tables are not evented ([#7762](https://github.com/osquery/osquery/pull/7762))
+
+### Build
+
+- Delete temporary CTest files ([#7782](https://github.com/osquery/osquery/pull/7782))
+- Fix table tests for macOS `running_apps` ([#7775](https://github.com/osquery/osquery/pull/7775))
+- Fix table tests for windows `platform_info` ([#7742](https://github.com/osquery/osquery/pull/7742))
+- Migrate jobs from ubuntu-18.04 to ubuntu-20.04 ([#7745](https://github.com/osquery/osquery/pull/7745))
+- Remove unused find_packages modules and submodule ([#7771](https://github.com/osquery/osquery/pull/7771))
+
 <a name="5.5.1"></a>
 ## [5.5.1](https://github.com/osquery/osquery/releases/tag/5.5.1)
 
@@ -336,7 +689,7 @@ This release represents commits from 24 contributors! Thank you all.
 - libs: Update thrift to version 0.15.0 ([#7330](https://github.com/osquery/osquery/pull/7330))
 - libs: Update yara to version 4.1.3 ([#7330](https://github.com/osquery/osquery/pull/7330))
 - libs: Update zstd to version 1.4.0 ([#7330](https://github.com/osquery/osquery/pull/7330))
-	
+
 <a name="5.1.0"></a>
 ## [5.1.0](https://github.com/osquery/osquery/releases/tag/5.1.0)
 
@@ -688,7 +1041,7 @@ Commits from 21 contributors! Thank you all!
 ### Documentation
 
 - Add 4.6.0 CHANGELOG ([#6809](https://github.com/osquery/osquery/pull/6809))
-- Add 4.7.0 CHANGELOG ([#6985](#https://github.com/osquery/osquery/pull/6985))
+- Add 4.7.0 CHANGELOG ([#6985](https://github.com/osquery/osquery/pull/6985))
 - Add docs for TLS enroll max attempts ([#6888](https://github.com/osquery/osquery/pull/6888))
 - Change reference about Azure Pipelines to GitHub Actions ([#6988](https://github.com/osquery/osquery/pull/6988))
 - Clarify FIM exclude category documentation ([#6966](https://github.com/osquery/osquery/pull/6966))

@@ -276,7 +276,6 @@ Status SQLiteSQLPlugin::attach(const std::string& name) {
   }
 
   bool is_extension = true;
-  auto statement = columnDefinition(response, false, is_extension);
 
   // Attach requests occurring via the plugin/registry APIs must act on the
   // primary database. To allow this, getConnection can explicitly request the
@@ -284,7 +283,7 @@ Status SQLiteSQLPlugin::attach(const std::string& name) {
   auto dbc = SQLiteDBManager::getConnection(true);
 
   // Attach as an extension, allowing read/write tables
-  return attachTableInternal(name, statement, dbc, is_extension);
+  return attachTableInternal(name, dbc, is_extension);
 }
 
 Status SQLiteSQLPlugin::detach(const std::string& name) {
@@ -341,6 +340,9 @@ static inline void openOptimized(sqlite3*& db) {
     settings += "PRAGMA " + setting.first + "=" + setting.second + "; ";
   }
   sqlite3_exec(db, settings.c_str(), nullptr, nullptr, nullptr);
+
+  // Register versioning collations and function.
+  registerVersionExtensions(db);
 
   // Register function extensions.
   registerMathExtensions(db);
@@ -552,6 +554,8 @@ QueryPlanner::QueryPlanner(const std::string& query,
       tables_.push_back(details[1]);
     }
   }
+
+  instance->clearAffectedTables();
 }
 
 Status QueryPlanner::applyTypes(TableColumns& columns) {

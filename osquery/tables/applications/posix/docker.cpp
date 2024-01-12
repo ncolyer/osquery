@@ -409,8 +409,13 @@ QueryData genContainers(QueryContext& context) {
           BIGINT(container_details.get_child("State").get<pid_t>("Pid", -1));
       r["started_at"] = container_details.get_child("State").get<std::string>(
           "StartedAt", "");
-      r["finished_at"] = container_details.get_child("State").get<std::string>(
-          "FinishedAt", "");
+      if (r["state"] != "running") {
+        r["finished_at"] =
+            container_details.get_child("State").get<std::string>("FinishedAt",
+                                                                  "");
+      } else {
+        r["finished_at"] = "";
+      }
       r["privileged"] = container_details.get_child("HostConfig")
                                 .get<bool>("Privileged", false)
                             ? INTEGER(1)
@@ -911,6 +916,8 @@ QueryData genContainerStats(QueryContext& context) {
           INTEGER(container.get<uint64_t>("precpu_stats.online_cpus", 0));
       r["memory_usage"] =
           BIGINT(container.get<uint64_t>("memory_stats.usage", 0));
+      r["memory_cached"] =
+          BIGINT(container.get<uint64_t>("memory_stats.stats.cache", 0));
       r["memory_max_usage"] =
           BIGINT(container.get<uint64_t>("memory_stats.max_usage", 0));
       r["memory_limit"] =

@@ -95,11 +95,9 @@ inline std::string __sqliteField(const std::string& source) noexcept {
 }
 
 #ifdef WIN32
-// TEXT is also defined in windows.h, we should not re-define it
 #define SQL_TEXT(x) __sqliteField(x)
 #else
 #define SQL_TEXT(x) __sqliteField(x)
-#define TEXT(x) __sqliteField(x)
 #endif
 
 /// See the affinity type documentation for TEXT.
@@ -569,7 +567,7 @@ struct QueryContext {
       ConstraintOperator op,
       std::set<std::string>& output,
       std::function<Status(const std::string& constraint,
-                           std::set<std::string>& output)> predicate);
+                           std::set<std::string>& output)> predicate) const;
 
   /// Check if the given column is used by the query
   bool isColumnUsed(const std::string& colName) const;
@@ -589,7 +587,7 @@ struct QueryContext {
                                   const std::string& colName,
                                   const Type& value) const {
     if (isColumnUsed(colName)) {
-      r[colName] = TEXT(value);
+      r[colName] = SQL_TEXT(value);
     }
   }
 

@@ -17,6 +17,7 @@
 #include <osquery/distributed/distributed.h>
 #include <osquery/hashing/hashing.h>
 #include <osquery/logger/logger.h>
+#include <osquery/process/process.h>
 #include <osquery/registry/registry_factory.h>
 #include <osquery/sql/sql.h>
 #include <osquery/utils/conversions/tryto.h>
@@ -108,6 +109,7 @@ Status Distributed::serializeResults(std::string& json) {
   auto queries_obj = doc.getObject();
   auto statuses_obj = doc.getObject();
   auto messages_obj = doc.getObject();
+  auto stats_obj = doc.getObject();
   for (const auto& result : results_) {
     auto arr = doc.getArray();
     auto s = serializeQueryData(result.results, result.columns, doc, arr);
@@ -117,11 +119,31 @@ Status Distributed::serializeResults(std::string& json) {
     doc.add(result.request.id, arr, queries_obj);
     doc.add(result.request.id, result.status.getCode(), statuses_obj);
     doc.add(result.request.id, result.message, messages_obj);
+
+    auto obj = doc.getObject();
+    if (performance_.count(result.request.id) > 0) {
+      auto perf = performance_[result.request.id];
+      obj.AddMember("wall_time_ms",
+                    static_cast<uint64_t>(perf.wall_time_ms),
+                    obj.GetAllocator());
+      obj.AddMember("user_time",
+                    static_cast<uint64_t>(perf.user_time),
+                    obj.GetAllocator());
+      obj.AddMember("system_time",
+                    static_cast<uint64_t>(perf.system_time),
+                    obj.GetAllocator());
+      obj.AddMember("memory",
+                    static_cast<uint64_t>(perf.last_memory),
+                    obj.GetAllocator());
+    };
+
+    doc.add(result.request.id, obj, stats_obj);
   }
 
   doc.add("queries", queries_obj);
   doc.add("statuses", statuses_obj);
   doc.add("messages", messages_obj);
+  doc.add("stats", stats_obj);
   return doc.toString(json);
 }
 
@@ -158,7 +180,7 @@ Status Distributed::runQueries() {
     // Keep track of the currently executing request
     Distributed::setCurrentRequestId(request.id);
 
-    SQL sql(request.query);
+    auto sql = monitorNonnumeric(request.id, request.query);
     const auto ok = sql.getStatus().ok();
     const auto& msg = ok ? "" : sql.getMessageString();
     if (!ok) {
@@ -252,6 +274,7 @@ Status Distributed::flushCompleted() {
                      response);
   if (s.ok()) {
     results_.clear();
+    performance_.clear();
   }
 
 #ifdef OSQUERY_LINUX
@@ -268,8 +291,9 @@ Status Distributed::acceptWork(const std::string& work) {
     return Status(1, "Error Parsing JSON");
   }
 
-  std::set<std::string> queries_to_run;
-  // Check for and run discovery queries first
+  // Check for and run discovery queries first.
+  // Store their result in discovery_results.
+  std::map<std::string, bool> discovery_results;
   if (doc.doc().HasMember("discovery")) {
     const auto& queries = doc.doc()["discovery"];
     assert(queries.IsObject());
@@ -290,9 +314,7 @@ Status Distributed::acceptWork(const std::string& work) {
         if (!sql.getStatus().ok()) {
           return Status(1, "Distributed discovery query has an SQL error");
         }
-        if (sql.rows().size() > 0) {
-          queries_to_run.insert(name);
-        }
+        discovery_results.insert({name, (sql.rows().size() > 0)});
       }
     }
   }
@@ -313,7 +335,11 @@ Status Distributed::acceptWork(const std::string& work) {
           return Status(1, "Distributed query is not a string");
         }
 
-        if (queries_to_run.empty() || queries_to_run.count(name)) {
+        // If a query does not have a corresponding discovery query
+        // or it does and it returned results, then store the query
+        // for execution.
+        const auto result = discovery_results.find(name);
+        if (result == discovery_results.cend() || result->second) {
           setDatabaseValue(kDistributedQueries, name, query);
         }
       }
@@ -350,6 +376,74 @@ std::string Distributed::getCurrentRequestId() {
 
 void Distributed::setCurrentRequestId(const std::string& cReqId) {
   currentRequestId_ = cReqId;
+}
+
+SQL Distributed::monitorNonnumeric(const std::string& name,
+                                   const std::string& query) {
+  // Snapshot the performance and times for the worker before running.
+  auto pid = std::to_string(PlatformProcess::getCurrentPid());
+  auto r0 = SQL::selectFrom({"resident_size", "user_time", "system_time"},
+                            "processes",
+                            "pid",
+                            EQUALS,
+                            pid);
+
+  using namespace std::chrono;
+  auto t0 = steady_clock::now();
+  SQL sql(query, true);
+
+  // Snapshot the performance after, and compare.
+  auto t1 = steady_clock::now();
+  auto r1 = SQL::selectFrom({"resident_size", "user_time", "system_time"},
+                            "processes",
+                            "pid",
+                            EQUALS,
+                            pid);
+  if (r0.size() > 0 && r1.size() > 0) {
+    // Always called while processes table is working.
+    uint64_t size = sql.rows().size();
+    recordQueryPerformance(
+        name, duration_cast<milliseconds>(t1 - t0).count(), size, r0[0], r1[0]);
+  }
+  return sql;
+}
+
+void Distributed::recordQueryPerformance(const std::string& name,
+                                         uint64_t delay_ms,
+                                         uint64_t size,
+                                         const Row& r0,
+                                         const Row& r1) {
+  performance_[name] = QueryPerformance();
+
+  auto& query = performance_.at(name);
+  if (!r1.at("user_time").empty() && !r0.at("user_time").empty()) {
+    auto ut1 = tryTo<long long>(r1.at("user_time"));
+    auto ut0 = tryTo<long long>(r0.at("user_time"));
+    auto diff = (ut1 && ut0) ? ut1.take() - ut0.take() : 0;
+    if (diff > 0) {
+      query.user_time = diff;
+    }
+  }
+
+  if (!r1.at("system_time").empty() && !r0.at("system_time").empty()) {
+    auto st1 = tryTo<long long>(r1.at("system_time"));
+    auto st0 = tryTo<long long>(r0.at("system_time"));
+    auto diff = (st1 && st0) ? st1.take() - st0.take() : 0;
+    if (diff > 0) {
+      query.system_time = diff;
+    }
+  }
+
+  if (!r1.at("resident_size").empty() && !r0.at("resident_size").empty()) {
+    auto rs1 = tryTo<long long>(r1.at("resident_size"));
+    auto rs0 = tryTo<long long>(r0.at("resident_size"));
+    auto diff = (rs1 && rs0) ? rs1.take() - rs0.take() : 0;
+    if (diff > 0) {
+      query.last_memory = diff;
+    }
+  }
+
+  query.wall_time_ms = delay_ms;
 }
 
 Status serializeDistributedQueryRequest(const DistributedQueryRequest& r,
@@ -466,4 +560,5 @@ std::string hashQuery(const std::string& query) {
 uint64_t denylistDuration() {
   return FLAGS_distributed_denylist_duration;
 }
+
 } // namespace osquery

@@ -47,7 +47,7 @@ function(detectOsqueryVersion)
   list(LENGTH osquery_version_components osquery_version_components_len)
 
   if(NOT osquery_version_components_len GREATER_EQUAL 3)
-    message(FATAL_ERROR "Version should have at least 3 components (semvar).")
+    message(FATAL_ERROR "Version should have at least 3 components (semver).")
   endif()
 
   set(OSQUERY_VERSION_INTERNAL "${osquery_version}" PARENT_SCOPE)
@@ -102,14 +102,23 @@ endif()
 
 if(DEFINED PLATFORM_WINDOWS)
   option(OSQUERY_ENABLE_INCREMENTAL_LINKING "Whether to enable or disable incremental linking (/INCREMENTAL or /INCREMENTAL:NO). Enabling it greatly increases disk usage")
+  option(OSQUERY_BUILD_ETW "Whether to enable and build ETW support" ON)
 endif()
 
 option(OSQUERY_ENABLE_CLANG_TIDY "Enables clang-tidy support")
 set(OSQUERY_CLANG_TIDY_CHECKS "-checks=cert-*,cppcoreguidelines-*,performance-*,portability-*,readability-*,modernize-*,bugprone-*" CACHE STRING "List of checks performed by clang-tidy")
 
 option(OSQUERY_BUILD_BPF "Whether to enable and build BPF support" ON)
-option(OSQUERY_BUILD_AWS "Whether to build the aws tables and library, to decrease memory usage and increase speed during build." ON)
+
+set(DEFAULT_BUILD_AWS ON)
+if(DEFINED PLATFORM_WINDOWS AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ARM64")
+    message(WARNING "AWS dependency is disabled on windows-arm64 because of missing atomics support")
+    set(DEFAULT_BUILD_AWS OFF)
+endif()
+option(OSQUERY_BUILD_AWS "Whether to build the aws tables and library, to decrease memory usage and increase speed during build." ${DEFAULT_BUILD_AWS})
+
 option(OSQUERY_BUILD_DPKG "Whether to build the dpkg tables" ON)
+option(OSQUERY_BUILD_EXPERIMENTS "Whether to build experiments" ON)
 
 option(OSQUERY_ENABLE_FORMAT_ONLY "Configure CMake to format only, not build")
 

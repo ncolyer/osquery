@@ -1,7 +1,7 @@
 project(thirdparty_openssl)
 
-set(OPENSSL_VERSION "1.1.1q")
-set(OPENSSL_ARCHIVE_SHA256 "d7939ce614029cdff0b6c20f0e2e5703158a489a72b2507b8bd51bf8c8fd10ca")
+set(OPENSSL_VERSION "3.2.0")
+set(OPENSSL_ARCHIVE_SHA256 "14c826f07c7e433706fb5c69fa9e25dab95684844b4c962a2cf1bf183eb4690e")
 
 set(OSQUERY_OPENSSL_ARCHIVE_PATH "" CACHE FILEPATH "Optional path to an openssl archive to use instead of downloading it")
 
@@ -10,7 +10,6 @@ include(ExternalProject)
 function(opensslMain)
 
   set(common_options
-    no-ssl2
     no-ssl3
     no-asm
     no-shared
@@ -54,16 +53,22 @@ function(opensslMain)
       ${make_command} install_sw install_ssldirs
     )
 
+    if(TARGET_PROCESSOR STREQUAL "aarch64")
+      set(lib_folder_name "lib")
+    else()
+      set(lib_folder_name "lib64")
+    endif()
+
     set(openssl_libs
-      "${install_prefix}/lib/libssl.a"
-      "${install_prefix}/lib/libcrypto.a"
+      "${install_prefix}/${lib_folder_name}/libssl.a"
+      "${install_prefix}/${lib_folder_name}/libcrypto.a"
     )
 
     set_target_properties(thirdparty_openssl_ssl PROPERTIES IMPORTED_LOCATION
-      "${install_prefix}/lib/libssl.a"
+      "${install_prefix}/${lib_folder_name}/libssl.a"
     )
     set_target_properties(thirdparty_openssl_crypto PROPERTIES IMPORTED_LOCATION
-      "${install_prefix}/lib/libcrypto.a"
+      "${install_prefix}/${lib_folder_name}/libcrypto.a"
     )
 
   elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
@@ -132,9 +137,15 @@ function(opensslMain)
     set(CMAKE_PREFIX_PATH "C:\\Strawberry\\perl\\bin")
     find_package(Perl REQUIRED)
 
+    if("${TARGET_PROCESSOR}" STREQUAL "aarch64")
+      set(OPENSSL_ARCH VC-WIN64-ARM)
+    else()
+      set(OPENSSL_ARCH VC-WIN64A)
+    endif()
+
     set(configure_command
       "${CMAKE_COMMAND}" -E env
-      "${PERL_EXECUTABLE}" Configure VC-WIN64A
+      "${PERL_EXECUTABLE}" Configure ${OPENSSL_ARCH}
       ${common_options}
     )
 
@@ -219,6 +230,11 @@ function(opensslMain)
   target_link_libraries(thirdparty_openssl INTERFACE
     thirdparty_openssl_ssl
     thirdparty_openssl_crypto
+  )
+
+  # Set compatibility to openssl 1.1.1 APIs until all the libraries are updated to work with openssl 3.x
+  target_compile_definitions(thirdparty_openssl INTERFACE
+    OPENSSL_API_COMPAT=10101
   )
 endfunction()
 

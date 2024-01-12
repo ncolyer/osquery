@@ -179,7 +179,7 @@ function(setupBuildFlags)
       )
 
       set(linux_cxx_link_libraries
-        c++abi
+        c++abi.a
         rt
         dl
       )
@@ -258,6 +258,7 @@ function(setupBuildFlags)
         APPLE=1
         DARWIN=1
         BSD=1
+        OSQUERY_DARWIN=1
         OSQUERY_BUILD_PLATFORM="darwin"
         OSQUERY_BUILD_DISTRO="10.14"
       )
@@ -324,6 +325,8 @@ function(setupBuildFlags)
       shell32.lib
       gdi32.lib
       mswsock.lib
+      comsuppw.lib
+      SearchSDK.lib
     )
 
     if(OSQUERY_ENABLE_INCREMENTAL_LINKING)

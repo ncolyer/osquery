@@ -36,6 +36,7 @@ function(boostMain)
     thirdparty_boost_property_tree
     thirdparty_boost_uuid
     thirdparty_boost_scope_exit
+    thirdparty_boost_circular_buffer
   )
 endfunction()
 
@@ -116,8 +117,8 @@ function(importBoostInterfaceLibraries)
     "proto:config,core,fusion,mpl,preprocessor,range,static_assert,type_traits,typeof,utility"
     "spirit:array,assert,config,core,endian,function,function_types,fusion,integer,io,iterator,move,mpl,optional,phoenix,pool,preprocessor,proto,range,regex,smart_ptr,static_assert,thread,throw_exception,type_traits,typeof,unordered,utility,variant"
     "coroutine2:assert,config,context"
-    "asio:array,assert,bind,chrono,config,core,coroutine2,date_time,function,regex,smart_ptr,system,throw_exception,type_traits,utility"
-    "beast:asio,assert,bind,config,container,core,endian,intrusive,logic,mp11,optional,smart_ptr,static_assert,system,throw_exception,type_traits,utility,winapi"
+    "asio:array,assert,bind,chrono,config,core,coroutine2,date_time,function,regex,smart_ptr,system,throw_exception,type_traits,utility,thirdparty_openssl"
+    "beast:asio,assert,bind,config,container,core,endian,intrusive,logic,mp11,optional,smart_ptr,static_assert,system,throw_exception,type_traits,utility,winapi,thirdparty_openssl"
     "logic:config,core"
     "mp11:"
     "format:assert,config,core,optional,smart_ptr,throw_exception,utility"
@@ -129,6 +130,7 @@ function(importBoostInterfaceLibraries)
     "tti:config,function_types,mpl,preprocessor,type_traits"
     "dynamic_bitset:assert,config,container_hash,core,integer,move,static_assert,throw_exception"
     "scope_exit:config,function,preprocessor,type_traits,typeof"
+    "circular_buffer:assert,concept_check,config,core,move,static_assert,throw_exception,type_traits"
   )
 
   foreach(library_descriptor ${library_descriptor_list})
@@ -139,6 +141,10 @@ function(importBoostInterfaceLibraries)
     string(REPLACE "," ";" library_dependency_list "${library_dependency_list}")
     importBoostInterfaceLibrary("${library_name}" ${library_dependency_list})
   endforeach()
+
+  target_compile_definitions(thirdparty_boost_container_hash INTERFACE
+    BOOST_NO_CXX98_FUNCTION_BASE
+  )
 
   # Additional settings for the libraries we just imported
   if(PLATFORM_LINUX)
@@ -717,6 +723,12 @@ function(generateBoostContext)
   set(context_backend "fcontext")
   if(OSQUERY_ENABLE_ADDRESS_SANITIZER AND NOT PLATFORM_WINDOWS)
     set(context_backend "ucontext")
+  endif()
+
+  if(PLATFORM_WINDOWS AND TARGET_PROCESSOR STREQUAL "aarch64")
+    # no fcontext asm support for Windows on Arm
+    # use winfib implementation
+    set(context_backend "winfib")
   endif()
 
   message(STATUS "osquery: boost::context is using the ${context_backend} backend")
