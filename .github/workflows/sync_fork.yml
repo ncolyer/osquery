@@ -1,0 +1,38 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # midnight every day
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        ref: master
+
+    - name: Sync with Upstream
+      run: |
+        git config --global user.name 'Nicholas Colyer'
+        git config --global user.email 'ncolyer+osquery@gmail.com'
+        git remote add upstream https://github.com/osquery/osquery.git
+        git fetch upstream
+        git checkout master
+        git merge upstream/master --allow-unrelated-histories
+    
+    - name: Check For Changes
+      run: |
+        if git diff --quiet; then
+          echo "no changes to commit"
+          echo "CHANGES=false" >> $GITHUB_ENV
+        else
+          echo "changes detected"
+          echo "CHANGES=true" >> $GITHUB_ENV
+        fi
+    - name: Push Changes
+      if: env.CHANGES == 'true'
+      run: |
+        git push
