@@ -1,9 +1,40 @@
-- name: Set OSQUERY_VERSION
-  run: echo "OSQUERY_VERSION=your_version_here" >> $GITHUB_ENV
+name: "CodeQL Analysis"
 
-- name: Custom Build Step for osquery
-  run: |
-    cmake -G "Unix Makefiles" \
-      -DOSQUERY_VERSION=$OSQUERY_VERSION \
-      # include other necessary cmake flags and options here
-    cmake --build . --target your_build_target
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 14 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: 'cpp'
+    
+      - name: Install Dependencies (if needed)
+        run: |
+          # still experimenting with this
+
+      - name: Set OSQUERY_VERSION
+        run: echo "OSQUERY_VERSION=5.11.0" >> $GITHUB_ENV
+
+      - name: Custom Build Step for osquery
+        run: |
+          cmake -G "Unix Makefiles" \
+            -DOSQUERY_VERSION=$OSQUERY_VERSION \
+            # include other necessary cmake flags and options here
+          cmake --build . --target your_build_target
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
