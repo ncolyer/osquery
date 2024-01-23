@@ -22,9 +22,10 @@ jobs:
         with:
           languages: 'cpp'
     
-      - name: Install Dependencies (if needed)
+      - name: Install LLVM and Clang
         run: |
-          # still experimenting with this
+          sudo apt-get update
+          sudo apt-get install -y llvm clang libclang-dev
 
       - name: Set OSQUERY_VERSION
         run: echo "OSQUERY_VERSION=5.11.0" >> $GITHUB_ENV
